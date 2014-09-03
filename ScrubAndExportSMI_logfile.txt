@@ -1,0 +1,109 @@
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+ScrubAndExportSMI: #5: NumAtoms=9, NumBonds=9
+molecule #5, SMI: c1cc(ccc1)CC[NH3+]	uz4.pdb-outfile00_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #6: NumAtoms=9, NumBonds=9
+molecule #6, SMI: c1cc(ccc1)[C@@H](C)[NH3+]	uz4.pdb-outfile00_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #7: NumAtoms=10, NumBonds=11
+molecule #7, SMI: c1(c[nH]nc1)c1c[nH]nc1	uz4.pdb-outfile01_uz4.pdb-outfile01
+-----------------------------------------------------------------
+ScrubAndExportSMI: #8: NumAtoms=10, NumBonds=10
+molecule #8, SMI: c1(ccc(Cl)cc1)CC[NH3+]	uz4.pdb-outfile03_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #9: NumAtoms=10, NumBonds=10
+molecule #9, SMI: c1(ccc(Cl)cc1)[C@@H](C)[NH3+]	uz4.pdb-outfile03_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #10: NumAtoms=16, NumBonds=17
+molecule #10, SMI: c1(ccc(Cl)cc1)[C@H](c1ccccc1)C[NH3+]	uz4.pdb-outfile03_uz4.pdb-outfile00_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #11: NumAtoms=16, NumBonds=17
+molecule #11, SMI: c1(ccc(Cl)cc1)[C@@H](Cc1ccccc1)[NH3+]	uz4.pdb-outfile03_uz4.pdb-outfile00_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #12: NumAtoms=16, NumBonds=17
+molecule #12, SMI: c1(ccc(Cl)cc1)[C@@](c1ccccc1)(C)[NH3+]	uz4.pdb-outfile03_uz4.pdb-outfile00_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #13: NumAtoms=15, NumBonds=16
+molecule #13, SMI: c1cc(ccc1)C(C[NH3+])c1ccccc1	uz4.pdb-outfile00_z_1.pdb_uz4.pdb-outfile00
+-----------------------------------------------------------------
+ScrubAndExportSMI: #14: NumAtoms=15, NumBonds=16
+molecule #14, SMI: c1cc(ccc1)C[C@@H]([NH3+])c1ccccc1	uz4.pdb-outfile00_z_1.pdb_uz4.pdb-outfile00
+-----------------------------------------------------------------
+ScrubAndExportSMI: #15: NumAtoms=15, NumBonds=16
+molecule #15, SMI: c1cc(ccc1)C(C)([NH3+])c1ccccc1	uz4.pdb-outfile00_z_1.pdb_uz4.pdb-outfile00
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+ScrubAndExportSMI: #5: NumAtoms=14, NumBonds=15
+molecule #5, SMI: C1([NH3+])(CC[NH2+]CC1)C1([NH3+])CC[NH2+]CC1	uz4.pdb-outfile00_uz4.pdb-outfile00
+-----------------------------------------------------------------
+ScrubAndExportSMI: #6: NumAtoms=16, NumBonds=18
+molecule #6, SMI: C1([NH3+])CCN(CC1)c1ccnc2[nH]ccc12	uz4.pdb-outfile00_uz4.pdb-outfile01
+-----------------------------------------------------------------
+ScrubAndExportSMI: #7: NumAtoms=8, NumBonds=8
+molecule #7, SMI: C1([NH3+])(CC[NH2+]CC1)C	uz4.pdb-outfile00_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #8: NumAtoms=23, NumBonds=26
+molecule #8, SMI: c1(ccnc2[nH]ccc12)N1CCC([NH3+])(CC1)C1([NH3+])CC[NH2+]CC1	uz4.pdb-outfile01_uz4.pdb-outfile00_uz4.pdb-outfile00
+-----------------------------------------------------------------
+ScrubAndExportSMI: #9: NumAtoms=8, NumBonds=8
+molecule #9, SMI: c1cc(Cl)ccc1C	uz4.pdb-outfile03_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #10: NumAtoms=15, NumBonds=16
+molecule #10, SMI: c1cc(Cl)ccc1CC1([NH3+])CC[NH2+]CC1	uz4.pdb-outfile03_uz4.pdb-outfile00_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #11: NumAtoms=24, NumBonds=27
+molecule #11, SMI: C1([NH3+])(CCN(CC1)c1ccnc2[nH]ccc12)CC1([NH3+])CC[NH2+]CC1	uz4.pdb-outfile00_uz4.pdb-outfile01_uz4.pdb-outfile00_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #12: NumAtoms=24, NumBonds=27
+molecule #12, SMI: C1([NH3+])(CCN(CC1)c1ccnc2[nH]ccc12)Cc1ccc(Cl)cc1	uz4.pdb-outfile00_uz4.pdb-outfile01_uz4.pdb-outfile03_z_1.pdb
+-----------------------------------------------------------------
+ScrubAndExportSMI: #13: NumAtoms=15, NumBonds=16
+molecule #13, SMI: C1([NH3+])(CC[NH2+]CC1)CC1([NH3+])CC[NH2+]CC1	uz4.pdb-outfile00_z_1.pdb_uz4.pdb-outfile00
+-----------------------------------------------------------------
+ScrubAndExportSMI: #14: NumAtoms=15, NumBonds=16
+molecule #14, SMI: c1cc(Cl)ccc1Cc1ccc(Cl)cc1	uz4.pdb-outfile03_z_1.pdb_uz4.pdb-outfile03
+-----------------------------------------------------------------
+ScrubAndExportSMI: #15: NumAtoms=22, NumBonds=24
+molecule #15, SMI: c1cc(Cl)ccc1C(C1([NH3+])CC[NH2+]CC1)C1([NH3+])CC[NH2+]CC1	uz4.pdb-outfile03_uz4.pdb-outfile00_z_1.pdb_uz4.pdb-outfile00
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+ScrubAndExportSMI: #4: NumAtoms=14, NumBonds=15
+molecule #4, SMI: C1([NH3+])(CC[NH2+]CC1)c1ccc(Cl)cc1	uz4.pdb-outfile00_uz4.pdb-outfile02
+-----------------------------------------------------------------
+ScrubAndExportSMI: #5: NumAtoms=14, NumBonds=15
+molecule #5, SMI: c1cc(Cl)ccc1c1ccc(Cl)cc1	uz4.pdb-outfile02_uz4.pdb-outfile02
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+-----------------------------------------------------------------
+ScrubAndExportSMI: #5: NumAtoms=16, NumBonds=18
+molecule #5, SMI: C1([NH3+])CCN(CC1)c1c2cc[nH]c2ncn1	uz4.pdb-outfile00_uz4.pdb-outfile01
+-----------------------------------------------------------------
+ScrubAndExportSMI: #6: NumAtoms=14, NumBonds=15
+molecule #6, SMI: C1([NH3+])(CC[NH2+]CC1)C(=O)N1CCCC1	uz4.pdb-outfile00_uz4.pdb-outfile02
+-----------------------------------------------------------------
+ScrubAndExportSMI: #7: NumAtoms=23, NumBonds=26
+molecule #7, SMI: c1(c2cc[nH]c2ncn1)N1CCC([NH3+])(CC1)C(=O)N1CCCC1	uz4.pdb-outfile01_uz4.pdb-outfile00_uz4.pdb-outfile02
+-----------------------------------------------------------------
+ScrubAndExportSMI: #8: NumAtoms=13, NumBonds=14
+molecule #8, SMI: C1(CCCN1C=O)c1ccccc1	uz4.pdb-outfile02_uz4.pdb-outfile03
+-----------------------------------------------------------------
+ScrubAndExportSMI: #9: NumAtoms=20, NumBonds=22
+molecule #9, SMI: c1ccc(cc1)[C@H]1CCCN1C(=O)C1([NH3+])CC[NH2+]CC1	uz4.pdb-outfile03_uz4.pdb-outfile00_uz4.pdb-outfile02
+-----------------------------------------------------------------
+ScrubAndExportSMI: #10: NumAtoms=29, NumBonds=33
+molecule #10, SMI: c1ccc(cc1)[C@H]1CCCN1C(=O)C1([NH3+])CCN(c2c3cc[nH]c3ncn2)CC1	uz4.pdb-outfile03_uz4.pdb-outfile01_uz4.pdb-outfile00_uz4.pdb-outfile02
+-----------------------------------------------------------------

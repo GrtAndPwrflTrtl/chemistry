@@ -1,0 +1,35 @@
+To run:
+
+   ./synth <linker-files> <rigid-files> -v <validation-file> -o <output-file> -tc <real-value>
+
+*  rigid files must be prefixed with r and linkers with l .
+*  -tc is Tanimoto coefficient [0, 1] where usually 0.95 is accepted as a strong enough coefficient. Default value is 0.95.
+
+
+Files:
+
+Molecule.cpp : main molecule class implementation. This includes the functions to combine two molecules together.
+
+A molecule consists of atoms (Atom.*) and bonds (Bond.*)
+
+AtomT : parsing and representation of the specific type for an atom: <atom>.<atom-type>
+
+Instantiator.* : Main routine for creating all combinations of molecules and adding to the hypergraph.
+
+Linker.* : parsing and representation of linkers. Note, linkers are molecules in the hypergraph, but are NOT output as combined molecules.
+
+Rigid.cpp : parsing and representation of rigids. Rigids are molecules in the hypergraph, but are NOT output as combined molecules. 
+
+
+obgen.* : Borrowed code from the obgen application. Provides an interface for us in this application.
+
+OBWriter.* : Outputs the synthesized molecules to the given output file.
+
+
+Unused currently, but necessary to acquire paths by which molecules are created:
+
+HyperEdgeMultiMap.h
+EdgeAggregator.h
+EdgeAnnotation.h
+
+
