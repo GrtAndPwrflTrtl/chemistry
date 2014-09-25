@@ -180,27 +180,27 @@ void readMoleculeFile(const char* fileName)
         OpenBabel::OBMol* mol = new OpenBabel::OBMol();
         bool notAtEnd = obConversion.ReadString(mol, prefix);
 
-        // calculate the molecular weight, H donors and acceptors and the plogp
-        double MolWt=mol->GetMolWt(); // the standard molar mass given by IUPAC atomic masses (amu)
-        OpenBabel::OBDescriptor* pDesc1 = OpenBabel::OBDescriptor::FindType("HBD");
-        OpenBabel::OBDescriptor* pDesc2 = OpenBabel::OBDescriptor::FindType("HBA1");
-        OpenBabel::OBDescriptor* pDesc3 = OpenBabel::OBDescriptor::FindType("HBA2");
-        OpenBabel::OBDescriptor* pDesc4 = OpenBabel::OBDescriptor::FindType("logP");
-
-        // add to logfile
-        std::ofstream logfile("initial_fragments_logfile.txt", std::ofstream::out | std::ofstream::app); // append
-        logfile << fileName << "\nMolWt = " << MolWt << "\n";
-        if(pDesc1) logfile << "HBD = " << pDesc1->Predict(mol) << "\n";
-        if(pDesc2) logfile << "HBA1 = " << pDesc2->Predict(mol) << "\n";
-        if(pDesc3) logfile << "HBA2 = " << pDesc3->Predict(mol) << "\n";
-        if(pDesc4) logfile << "logP = " << pDesc4->Predict(mol) << "\n";
-        logfile << std::endl;
-        logfile.close();
-
         // Assign all needed data to the molecule (comment data)
         Molecule* local = createLocalMolecule(mol, fileName[0] == 'l' ? LINKER : RIGID, name, suffix);
 
-if (g_debug_output) std::cout << "Local: " << *local << "|" << std::endl;
+        // calculate the molecular weight, H donors and acceptors and the plogp
+        local->predictLipinski();
+
+        // add to logfile
+        if (local->islipinskiPredicted())
+        {
+            std::ofstream logfile("initial_fragments_logfile.txt", std::ofstream::out | std::ofstream::app); // append
+            logfile << fileName << "\n*MolWt = " << local->getMolWt() << "\n";
+            logfile << "HBD = " << local->getHBD() << "\n";
+            logfile << "HBA1 = " << local->getHBA1() << "\n";
+            logfile << "logP = " << local->getlogP() << "\n";
+            logfile << std::endl;
+            logfile.close();
+        }
+        else
+            cerr << "Main: predictLipinski failed somehow!" << endl;
+
+        if (g_debug_output) std::cout << "Local: " << *local << "|" << std::endl;
     
         // Add to the linker or rigid list as needed.
         addMolecule(fileName[0], local); 

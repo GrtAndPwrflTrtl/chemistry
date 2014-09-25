@@ -11,6 +11,8 @@
 #include "Atom.h"
 #include "obgen.h"
 #include "Thread_Pool.h"
+#include "Rigid.h"
+#include "Linker.h"
 
 
 #include "EdgeAggregator.h"
@@ -25,7 +27,10 @@
 //Thread_Pool<OpenBabel::OBMol*, bool> Molecule::pool(THREAD_POOL_SIZE, OBGen::obgen);
 
 
-Molecule::Molecule() {}
+Molecule::Molecule() : lipinskiPredicted(false),
+                       lipinskiEstimated(false)
+{}
+
 Molecule::~Molecule()
 {
 /*
@@ -48,7 +53,9 @@ Molecule::Molecule(OpenBabel::OBMol* mol, const std::string& n, MoleculeT t) : g
                                                                                lipinski(true),
                                                                                obmol(mol),
                                                                                name(n),
-                                                                               type(t) 
+                                                                               type(t),
+                                                                               lipinskiPredicted(false),
+                                                                               lipinskiEstimated(false) 
 {
     // Create the initial atom / bond data based on obmol.
     localizeOBMol();
@@ -58,6 +65,56 @@ Molecule::Molecule(OpenBabel::OBMol* mol, const std::string& n, MoleculeT t) : g
     //
     OpenBabel::OBFingerprint* fpType = OpenBabel::OBFingerprint::FindFingerprint("");
     fpType->GetFingerprint(mol, this->fingerprint);
+}
+
+void Molecule::predictLipinski()
+{
+    // calculate the molecular weight, H donors and acceptors and the plogp
+    OpenBabel::OBDescriptor* pDesc1 = OpenBabel::OBDescriptor::FindType("HBD");
+    OpenBabel::OBDescriptor* pDesc2 = OpenBabel::OBDescriptor::FindType("HBA1");
+    OpenBabel::OBDescriptor* pDesc4 = OpenBabel::OBDescriptor::FindType("logP");
+
+    MolWt = (this->obmol)->GetMolWt(); // the standard molar mass given by IUPAC atomic masses (amu)
+    HBD = pDesc1->Predict(this->obmol);
+    HBA1 = pDesc2->Predict(this->obmol);
+    logP = pDesc4->Predict(this->obmol);
+
+    lipinskiPredicted = true;
+    lipinskiEstimated = false;
+}
+
+
+void Molecule::estimateLipinski()
+{
+    // initialize sums to 0
+    double calc_MolWt = 0;
+    double calc_HBD = 0;
+    double calc_HBA1 = 0;
+    double calc_logP = 0;
+
+    for (int r = 0; r < this->rigids.size(); r++)
+    {
+        calc_MolWt += (this->rigids[r])->getMolWt();
+        calc_HBD += (this->rigids[r])->getHBD();
+        calc_HBA1 += (this->rigids[r])->getHBA1();
+        calc_logP += (this->rigids[r])->getlogP();
+    }
+
+    for (int ell = 0; ell < this->linkers.size(); ell++)
+    {
+        calc_MolWt += (this->linkers[ell])->getMolWt();
+        calc_HBD += (this->linkers[ell])->getHBD();
+        calc_HBA1 += (this->linkers[ell])->getHBA1();
+        calc_logP += (this->linkers[ell])->getlogP();
+    }
+
+    MolWt = 6.6746 + 0.95965 * calc_MolWt; // the standard molar mass given by IUPAC atomic masses (amu)
+    HBD = 0.41189 + 0.4898 * calc_HBD;
+    HBA1 = 0.278 + 0.93778 * calc_HBA1;
+    logP = 0.84121 + 0.59105 * calc_logP;
+
+    lipinskiPredicted = false;
+    lipinskiEstimated = true;
 }
 
 void Molecule::localizeOBMol()
@@ -394,6 +451,8 @@ Molecule* Molecule::ComposeToNewMolecule(const Molecule& that,
     // Bonds in open babel start indexing at 1.
     newLocal->atoms[thisAtomIndex-1].addExternalConnection(thatAtomIndex-1);
     newLocal->atoms[thatAtomIndex-1].addExternalConnection(thisAtomIndex-1);
+
+    newLocal->estimateLipinski();
 
     return newLocal;
 }

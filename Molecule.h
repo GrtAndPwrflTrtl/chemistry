@@ -43,6 +43,13 @@ class Molecule
     bool IsRigid() const { return type == RIGID; }
     bool IsLipinski() const { return lipinski; }
     
+    bool islipinskiPredicted() { return lipinskiPredicted; };
+    bool islipinskiEstimated() { lipinskiEstimated; };
+    double getMolWt() { return MolWt;};
+    double getHBD() { return HBD;};
+    double getHBA1() { return HBA1;};
+    double getlogP() { return logP;};
+
     int getNumberOfAtoms() const { return this->atoms.size(); }
     int getNumberOfBonds() const { return this->bonds.size(); }
     int getNumberOfRigids() const { return this->rigids.size(); }
@@ -75,6 +82,9 @@ class Molecule
     const std::vector<Rigid*>& getRigids() const { return rigids; }
     const std::vector<Linker*>& getLinkers() const { return linkers; }
     std::string getName() const { return name; }
+
+    void predictLipinski();
+    void estimateLipinski();
 
   private:
     void localizeOBMol();
@@ -115,7 +125,14 @@ class Molecule
 
     int getAtomIndex(int id) const;
     int getBondIndex(int id) const;
-    int getBondIndex(int xID, int yID) const;  
+    int getBondIndex(int xID, int yID) const;
+
+    // Lipinski Descriptors
+    bool lipinskiPredicted, lipinskiEstimated; // whether Lipinski values are calculated with Predict(), or simple estimation
+    double MolWt;
+    double HBD;
+    double HBA1;
+    double logP;
 
     virtual void parseAppendix(std::string& comment)
     {
