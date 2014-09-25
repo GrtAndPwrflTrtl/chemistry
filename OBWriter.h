@@ -23,7 +23,7 @@ class OBWriter
     std::ofstream out;
     unsigned int mCounter; 
 
-    static Thread_Pool<OpenBabel::OBMol*, bool> pool; // (THREAD_POOL_SIZE, OBGen::obgen);
+//    static Thread_Pool<OpenBabel::OBMol*, bool> pool; // (THREAD_POOL_SIZE, OBGen::obgen);
 
     int CountComplexLipinski(std::vector<Molecule>& molecules);
 

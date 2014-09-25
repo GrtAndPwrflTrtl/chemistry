@@ -18,7 +18,6 @@
 #include "Utilities.h"
 #include "IdFactory.h"
 
-
 //
 // Add the hyperedge to the hypergraph
 //
@@ -71,7 +70,7 @@ HyperGraph<Molecule, EdgeAnnotationT> Instantiator::Instantiate(std::vector<Link
 
         if (HYPERGRAPH_CONSTR_DEBUG)
         {
-            ds << "Working on: id(" << currentMolecule->getGraphID() << ")" << std::endl;
+            if (g_debug_output) ds << "Working on: id(" << currentMolecule->getGraphID() << ")" << std::endl;
         }
 
         //
@@ -125,7 +124,7 @@ void Instantiator::HandleNewMolecules(std::queue<Molecule*>& worklist,
             {
                 newEdges[e]->consequent->setGraphID(graph.size() - 1);
 
-std::cerr << "Added: " << newEdges[e]->consequent << std::endl; 
+if (g_debug_output) std::cerr << "Added: " << newEdges[e]->consequent << std::endl; 
             }
 
             // Also add to the worklist

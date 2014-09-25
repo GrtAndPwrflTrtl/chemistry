@@ -11,7 +11,6 @@
 #include "Validator.h"
 #include "Options.h"
 
-
 //
 // Validate a single molecule.
 //
@@ -19,22 +18,22 @@ bool Validator::Validate(OpenBabel::OBMol& validationMol)
 {
     std::vector<unsigned int> validationFP;
 
-std::cerr << "Atoms: " << validationMol.NumAtoms() << std::endl;
-std::cerr << "Bonds: " << validationMol.NumBonds() << std::endl;
+if (g_debug_output) std::cerr << "Atoms: " << validationMol.NumAtoms() << std::endl;
+if (g_debug_output) std::cerr << "Bonds: " << validationMol.NumBonds() << std::endl;
 
     // Create the fingerprint for the validation molecule
     OpenBabel::OBFingerprint* fpType = OpenBabel::OBFingerprint::FindFingerprint("");
 
-std::cerr << "Using Fingerprint: " << fpType->Description() << std::endl;
+if (g_debug_output) std::cerr << "Using Fingerprint: " << fpType->Description() << std::endl;
 
     fpType->GetFingerprint(&validationMol, validationFP);
 
-std::cerr << "Validation: " << std::endl;
+if (g_debug_output) std::cerr << "Validation: " << std::endl;
 for (std::vector<unsigned int>::const_iterator it = validationFP.begin(); it != validationFP.end(); it++)
 {
-    std::cerr << *it << "|";
+    if (g_debug_output) std::cerr << *it << "|";
 }
-std::cerr << std::endl;
+if (g_debug_output) std::cerr << std::endl;
 
 
     //
@@ -45,17 +44,17 @@ std::cerr << std::endl;
         std::vector<unsigned int> hgFP;
         graph.vertices[v].data.GetFingerprint(hgFP);
 
-std::cerr << "Hypergraph: " << std::endl;
+if (g_debug_output) std::cerr << "Hypergraph: " << std::endl;
 for (std::vector<unsigned int>::const_iterator it = hgFP.begin(); it != hgFP.end(); it++)
 {
-    std::cerr << *it << "|";
+    if (g_debug_output) std::cerr << *it << "|";
 }
-std::cerr << std::endl;
+if (g_debug_output) std::cerr << std::endl;
 
 
         double tanimoto = OpenBabel::OBFingerprint::Tanimoto(validationFP, hgFP);
 
-        std::cerr << "Tanimoto: " << tanimoto << std::endl;
+        if (g_debug_output) std::cerr << "Tanimoto: " << tanimoto << std::endl;
 
         if (tanimoto > (double)Options::TANIMOTO) return true;
     }

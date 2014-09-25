@@ -21,7 +21,6 @@
 #include "Options.h"
 
 
-
 // Static allocation of the thread pool.
 //Thread_Pool<OpenBabel::OBMol*, bool> Molecule::pool(THREAD_POOL_SIZE, OBGen::obgen);
 
@@ -99,7 +98,7 @@ bool Molecule::operator==(const Molecule& that) const
     that.GetFingerprint(thatFP);
     double tanimoto = OpenBabel::OBFingerprint::Tanimoto(thisFP, thatFP);
 
-    std::cerr << "Tanimoto: " << tanimoto << std::endl;
+    if (g_debug_output) std::cerr << "Tanimoto: " << tanimoto << std::endl;
 
     if (tanimoto > Options::TANIMOTO) return true;
 
@@ -282,9 +281,9 @@ std::vector<EdgeAggregator*>* Molecule::Compose(const Molecule& that) const
             if (atoms[thisA].CanConnectTo(that.atoms[thatA]))
             {
 
-std::cerr << "Connection Possible: " << std::endl;
-std::cerr << "\t" << atoms[thisA].toString() << std::endl;
-std::cerr << "\t" << that.atoms[thatA].toString() << std::endl;
+if (g_debug_output) std::cerr << "Connection Possible: " << std::endl;
+if (g_debug_output) std::cerr << "\t" << atoms[thisA].toString() << std::endl;
+if (g_debug_output) std::cerr << "\t" << that.atoms[thatA].toString() << std::endl;
 
                 // Create a new molecule;
                 // The indices are the new indices when the atoms and bonds are combined together.

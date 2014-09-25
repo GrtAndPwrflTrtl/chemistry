@@ -13,9 +13,8 @@
 #include "Thread_Pool.h"
 #include "Constants.h"
 
-
 // Static allocation of the thread pool.
-Thread_Pool<OpenBabel::OBMol*, bool> OBWriter::pool(THREAD_POOL_SIZE, OBGen::obgen);
+// Thread_Pool<OpenBabel::OBMol*, bool> OBWriter::pool(THREAD_POOL_SIZE, OBGen::obgen);
 
 
 // ****************************************************************************
@@ -70,14 +69,14 @@ void OBWriter::ScrubAndExportSMI(std::vector<Molecule>& molecules)
             if (it->IsComplex() && it->IsLipinski()) // otherwise we dont care about it anyway, so skip to save time/effort
             {
                 // Set up data struct and display basic information
-                std::cout << "ScrubAndExportSMI: getOpenBabelMol..." << std::endl;
+                if (g_debug_output) std::cout << "ScrubAndExportSMI: getOpenBabelMol..." << std::endl;
                 OpenBabel::OBMol* mol = it->getOpenBabelMol();  // OBMol mol;
                 std::cout << "ScrubAndExportSMI: #" << i << ": NumAtoms=" << mol->NumAtoms() << ", NumBonds=" << mol->NumBonds() << std::endl;
                 logfile << "ScrubAndExportSMI: #" << i << ": NumAtoms=" << mol->NumAtoms() << ", NumBonds=" << mol->NumBonds() << std::endl;
 		//std::cout << it->toString() << std::endl; // more detailed data
 
                 // pre-emptive extra run of OBGen, seems to stop segmentation fault
-                std::cout << "ScrubAndExportSMI: OBGen(fast)..." << std::endl;
+                if (g_debug_output) std::cout << "ScrubAndExportSMI: OBGen(fast)..." << std::endl;
                 OBGen::fast_obgen(mol);
 
                 // log "before" molecule
@@ -86,22 +85,22 @@ void OBWriter::ScrubAndExportSMI(std::vector<Molecule>& molecules)
                 //logfile << s;
 
                 // Write to then read from SMI; should remove xyz coords
-                std::cout << "ScrubAndExportSMI: WriteString:" << std::endl;
+                if (g_debug_output) std::cout << "ScrubAndExportSMI: WriteString:" << std::endl;
                 s=SMI_conv.WriteString(mol);
                 logfile << "molecule #" << i << ", SMI: " << s; // log "SMI" version
                 if(SMI_conv.ReadString(mol, s))
-                   std::cout << "ScrubAndExportSMI: ReadString - successful" << std::endl;
+                   {if (g_debug_output) {std::cout << "ScrubAndExportSMI: ReadString - successful" << std::endl;}}
                 else
                    std::cout << "ScrubAndExportSMI: ReadString - failed" << std::endl;
 
                 // log "after" molecule
-                std::cout << "molecule #" << i << ", SDF format, after:" << std::endl;
+                if (g_debug_output) std::cout << "molecule #" << i << ", SDF format, after:" << std::endl;
                 //logfile << "molecule #" << i << ", SDF format, after:" << std::endl;
                 s=SDF_conv.WriteString(mol);
-                std::cout << s;
+                if (g_debug_output) std::cout << s;
                 //logfile << s;
             }
-            std::cout << "-----------------------------------------------------------------" << std::endl;
+            if (g_debug_output) std::cout << "-----------------------------------------------------------------" << std::endl;
             logfile << "-----------------------------------------------------------------" << std::endl;
         i++;
         }

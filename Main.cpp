@@ -16,6 +16,7 @@
 #include <openbabel/generic.h>
 #include <openbabel/atom.h>
 #include <openbabel/bond.h>
+#include <openbabel/groupcontrib.h>
 
 
 //
@@ -171,18 +172,35 @@ void readMoleculeFile(const char* fileName)
            name += "    ####";
         }
 
-        std::cerr << "Name: " << std::endl << name << std::endl;
-        std::cerr << "Prefix: " << std::endl << prefix << std::endl;
-        std::cerr << "Suffix: " << std::endl << suffix << std::endl;
+        if (g_debug_output) std::cerr << "Name: " << std::endl << name << std::endl;
+        if (g_debug_output) std::cerr << "Prefix: " << std::endl << prefix << std::endl;
+        if (g_debug_output) std::cerr << "Suffix: " << std::endl << suffix << std::endl;
 
         // Create and parse using Open Babel
         OpenBabel::OBMol* mol = new OpenBabel::OBMol();
         bool notAtEnd = obConversion.ReadString(mol, prefix);
 
+        // calculate the molecular weight, H donors and acceptors and the plogp
+        double MolWt=mol->GetMolWt(); // the standard molar mass given by IUPAC atomic masses (amu)
+        OpenBabel::OBDescriptor* pDesc1 = OpenBabel::OBDescriptor::FindType("HBD");
+        OpenBabel::OBDescriptor* pDesc2 = OpenBabel::OBDescriptor::FindType("HBA1");
+        OpenBabel::OBDescriptor* pDesc3 = OpenBabel::OBDescriptor::FindType("HBA2");
+        OpenBabel::OBDescriptor* pDesc4 = OpenBabel::OBDescriptor::FindType("logP");
+
+        // add to logfile
+        std::ofstream logfile("initial_fragments_logfile.txt", std::ofstream::out | std::ofstream::app); // append
+        logfile << fileName << "\nMolWt = " << MolWt << "\n";
+        if(pDesc1) logfile << "HBD = " << pDesc1->Predict(mol) << "\n";
+        if(pDesc2) logfile << "HBA1 = " << pDesc2->Predict(mol) << "\n";
+        if(pDesc3) logfile << "HBA2 = " << pDesc3->Predict(mol) << "\n";
+        if(pDesc4) logfile << "logP = " << pDesc4->Predict(mol) << "\n";
+        logfile << std::endl;
+        logfile.close();
+
         // Assign all needed data to the molecule (comment data)
         Molecule* local = createLocalMolecule(mol, fileName[0] == 'l' ? LINKER : RIGID, name, suffix);
 
-std::cout << "Local: " << *local << "|" << std::endl;
+if (g_debug_output) std::cout << "Local: " << *local << "|" << std::endl;
     
         // Add to the linker or rigid list as needed.
         addMolecule(fileName[0], local); 
@@ -228,6 +246,12 @@ int main(int argc, char** argv)
     
     if (!readInputFiles(options)) return 1;
     
+    if (g_calculate_lipinski_descriptors_for_input_fragments_only)
+    {
+        std::cout << "Calculated Lipinski Descriptors for input fragments, now exiting early. (Flag set in Constants.h)" << std:: endl;
+        return 0;
+    }
+
     cerr << "1" << endl;
     
     Instantiator instantiator(cout);

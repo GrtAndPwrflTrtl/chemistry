@@ -4,7 +4,7 @@ OB_LIB=openbabel
 
 IDIR =./
 CC=g++
-OPT= -g #-O1
+OPT= -g -pg #-O1
 CFLAGS= $(OPT) -I$(IDIR) -I$(OB_INC) -l$(OB_LIB) -lpthread
 #
 ODIR=./obj
