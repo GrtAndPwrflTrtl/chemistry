@@ -184,7 +184,7 @@ void readMoleculeFile(const char* fileName)
         Molecule* local = createLocalMolecule(mol, fileName[0] == 'l' ? LINKER : RIGID, name, suffix);
 
         // calculate the molecular weight, H donors and acceptors and the plogp
-        local->predictLipinski();
+        local->openBabelPredictLipinski();
 
         // add to logfile
         if (local->islipinskiPredicted())
@@ -242,13 +242,14 @@ int main(int argc, char** argv)
     Options options(argc, argv);
     if (!options.parseCommandLine()) return 1;
 
-    cerr << "Tanimoto Specified: " << Options::TANIMOTO << endl;
+    cerr << "Tanimoto Coefficient Threshold Specified: " << Options::TANIMOTO << endl;
 
     if (!readInputFiles(options)) return 1;
     
     if (g_calculate_lipinski_descriptors_for_input_fragments_only)
     {
-        std::cout << "Calculated Lipinski Descriptors for input fragments, now exiting early. (Flag set in Constants.h)" << std:: endl;
+        std::cout << "Calculated Lipinski Descriptors for input fragments, now exiting early."
+                  << " (Flag set in Constants.h)" << std:: endl;
         return 0;
     }
 
@@ -260,10 +261,10 @@ int main(int argc, char** argv)
     
     HyperGraph<Molecule, EdgeAnnotationT> graph = instantiator.Instantiate(linkers, rigids);
 
-std::cerr << "Hypergraph contains (" << graph.size() << ") nodes" << std::endl;
+    std::cerr << "Hypergraph contains (" << graph.size() << ") nodes" << std::endl;
 
-// std::cerr << "Graph: " << std::endl << graph
-//          << "------------------------------------------------------------" << std::endl;
+    // std::cerr << "Graph: " << std::endl << graph
+    //          << "------------------------------------------------------------" << std::endl;
 
     cerr << "3" << endl;
 
@@ -274,14 +275,17 @@ std::cerr << "Hypergraph contains (" << graph.size() << ") nodes" << std::endl;
 
     writer.write(graph.CollectData());
 
+    //
+    // Validate the molecules specified in the validation file (command-line -v)
+    //
     Validator validator(graph);
     validator.Validate(options.validationFile);
 
-//    PebblerHyperGraph<Molecule, EdgeAnnotationT> pebblerGraph = graph.GetPebblerHyperGraph();
+    //    PebblerHyperGraph<Molecule, EdgeAnnotationT> pebblerGraph = graph.GetPebblerHyperGraph();
 
     cerr << "4" << endl;
 
-//    if (DEBUG) cout << graph;
+    //    if (DEBUG) cout << graph;
 
     cerr << "5" << endl;
 

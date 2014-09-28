@@ -36,7 +36,7 @@ void Rigid::parseAppendix(std::string& suffix)
     while(line.find("> <") == std::string::npos)
     {
         getline(suffStream, line);
-std::cout << "---------" << line << "**********" << std::endl;
+        std::cout << "---------" << line << "**********" << std::endl;
     }
 
     //
@@ -46,9 +46,6 @@ std::cout << "---------" << line << "**********" << std::endl;
     for(int x = 0; x < this->getNumberOfAtoms(); x++)
     {
         suffStream >> atomType;
-
-//std::cerr << "Type: " << atomType << std::endl;
-//std::cerr << "Parsed Type: " << * new AtomT(atomType) << std::endl;
 
         this->atoms[x].setAtomType(* new AtomT(atomType));
         this->atoms[x].setOwnerMoleculeType(RIGID);
@@ -77,9 +74,6 @@ std::cout << "---------" << line << "**********" << std::endl;
         while (suffStream.peek() != '\n' && suffStream.peek() != '\r')
         {
             suffStream >> atomType;
-
-// std::cout << "Type: " << atomType << std::endl;
-// std::cout << "Parsed Type: " << * new AtomT(atomType) << std::endl;
 
             this->atoms[atomId - 1].setMaxConnect(1);
             this->atoms[atomId - 1].addConnectionType(* new AtomT(atomType));

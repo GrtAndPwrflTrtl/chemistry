@@ -21,6 +21,8 @@ const bool g_debug_output=true;
 const bool g_calculate_lipinski_descriptors_for_input_fragments_only=false;
 
 // upper bounds
+extern unsigned int HIERARCHICAL_LEVEL_BOUND; 
+
 extern double MOLWT_UPPERBOUND;
 extern double HBD_UPPERBOUND;
 extern double HBA1_UPPERBOUND;

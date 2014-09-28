@@ -1,5 +1,6 @@
 #include <cstring>
 #include <vector>
+#include <bitset>
 
 
 #include<openbabel/descriptor.h>
@@ -66,7 +67,7 @@ Molecule::Molecule(OpenBabel::OBMol* mol, const std::string& n, MoleculeT t) : g
     fpType->GetFingerprint(mol, this->fingerprint);
 }
 
-void Molecule::predictLipinski()
+void Molecule::openBabelPredictLipinski()
 {
     // calculate the molecular weight, H donors and acceptors and the plogp
     OpenBabel::OBDescriptor* pDesc1 = OpenBabel::OBDescriptor::FindType("HBD");
@@ -138,13 +139,11 @@ void Molecule::localizeOBMol()
         this->addBond((int)oneObBond->GetBeginAtom()->GetId(), (int)oneObBond->GetEndAtom()->GetId());
     }
 
-//std::cerr << *this << std::endl;
+    //std::cerr << *this << std::endl;
 }
 
 bool Molecule::operator==(const Molecule& that) const
 {
-//std::cerr << "Checking: == " << this->getGraphID() << ":" << that.getGraphID() << std::endl;
-
     //
     // The foremost comparitor is the Tanimoto value
     //
@@ -157,27 +156,21 @@ bool Molecule::operator==(const Molecule& that) const
 
     if (tanimoto > Options::TANIMOTO) return true;
 
- 
 
     //
     // Check type as well as sizes of atoms, bonds, linkers, and rigids.
     //
     if (this->type != that.type) return false;
 
-//std::cerr << "1" << std::endl;
 
     if (this->atoms.size() != that.atoms.size()) return false;
 
-//std::cerr << "2" << std::endl;
     if (this->bonds.size() != that.bonds.size()) return false;
 
-//std::cerr << "3" << std::endl;
     if (this->rigids.size() != that.rigids.size()) return false;
 
-//std::cerr << "4" << std::endl;
     if (this->linkers.size() != that.linkers.size()) return false;
 
-//std::cerr << "5" << std::endl;
     //
     // Check the contents of the atoms, bonds, rigids, and linkers
     //
@@ -185,31 +178,25 @@ bool Molecule::operator==(const Molecule& that) const
     {
         if (find(that.atoms.begin(), that.atoms.end(), this->atoms[a]) == that.atoms.end())
         {
-//std::cerr << "Not Found: " << this->atoms[a].toString() << endl;
-
             return false;
         }
     }
 
-//std::cerr << "6" << std::endl;
     for (int b = 0; b < this->bonds.size(); b++)
     {
         if (find(that.bonds.begin(), that.bonds.end(), this->bonds[b]) == that.bonds.end()) return false;
     }
 
-//std::cerr << "7" << std::endl;
     for (int r = 0; r < this->rigids.size(); r++)
     {
         if (find(that.rigids.begin(), that.rigids.end(), this->rigids[r]) == that.rigids.end()) return false;
     }
 
-//std::cerr << "8" << std::endl;
     for (int ell = 0; ell < this->linkers.size(); ell++)
     {
         if (find(that.linkers.begin(), that.linkers.end(), this->linkers[ell]) == that.linkers.end()) return false;
     }
 
-//std::cerr << "9" << std::endl;
     return true;
 }
 
@@ -241,27 +228,28 @@ bool Molecule::operator==(const Molecule& that) const
 //
 bool Molecule::exceedsMaxMolecularMass()
 {
-    if (!lipinskiPredicted && !lipinskiEstimated)
-        this->predictLipinski();
+    if (!lipinskiPredicted && !lipinskiEstimated) this->openBabelPredictLipinski();
+
     if (!lipinskiPredicted && !lipinskiEstimated)
     {
         cerr << "didnt predict and failed to estimate lipinski coefficients" << endl;
         return false;
     }
+
     return MolWt > MOLWT_UPPERBOUND;
 }
 
 bool Molecule::isOpenbabelLipinskiCompliant()
 {
-    if (!lipinskiPredicted)
-        this->predictLipinski();
+    if (!lipinskiPredicted) this->openBabelPredictLipinski();
+
     return this->isLipinskiCompliant();
 }
 
 bool Molecule::isLipinskiCompliant()
 {
-    if (!lipinskiPredicted && !lipinskiEstimated)
-        this->predictLipinski();
+    if (!lipinskiPredicted && !lipinskiEstimated) this->openBabelPredictLipinski();
+
     if (!lipinskiPredicted && !lipinskiEstimated)
     {
         cerr << "didnt predict and failed to estimate lipinski coefficients" << endl;
@@ -315,9 +303,6 @@ std::vector<EdgeAggregator*>* Molecule::Compose(const Molecule& that) const
     {
         for (unsigned int thatA = 0; thatA < that.atoms.size(); thatA++)
         {
-
-//std::cerr << thisA << ":" << thatA << std::endl;
-
             //
             // We've established the fact that these two particular atoms are connectable
             // Can we actually connect these two molecules at these two atoms?
@@ -325,9 +310,12 @@ std::vector<EdgeAggregator*>* Molecule::Compose(const Molecule& that) const
             if (atoms[thisA].CanConnectTo(that.atoms[thatA]))
             {
 
-if (g_debug_output) std::cerr << "Connection Possible: " << std::endl;
-if (g_debug_output) std::cerr << "\t" << atoms[thisA].toString() << std::endl;
-if (g_debug_output) std::cerr << "\t" << that.atoms[thatA].toString() << std::endl;
+                if (g_debug_output)
+                {
+                    std::cerr << "Connection Possible: " << std::endl;
+                    std::cerr << "\t" << atoms[thisA].toString() << std::endl;
+                    std::cerr << "\t" << that.atoms[thatA].toString() << std::endl;
+                }
 
                 // Create a new molecule;
                 // The indices are the new indices when the atoms and bonds are combined together.
@@ -336,9 +324,7 @@ if (g_debug_output) std::cerr << "\t" << that.atoms[thatA].toString() << std::en
                 // Check if the new Molecule satisfies all criteria.
                 if (newMol->satisfiesMoleculeSynthesisCriteria())
                 {
-// std::cerr << "Criteria Satisfied." << std::endl;
-
-// std::cerr << "Created: " << *newMol << std::endl;
+                    // std::cerr << "Created: " << *newMol << std::endl;
 
                     // Antecedent
                     std::vector<Molecule> ante;
@@ -347,15 +333,6 @@ if (g_debug_output) std::cerr << "\t" << that.atoms[thatA].toString() << std::en
 
                     // Add the new molecule / edge to the list of new molecules
                     newMolecules->push_back(new EdgeAggregator(ante, newMol, new EdgeAnnotationT()));
-
-                    // Only if lipinski compliant do we run a molecule through obgen.
-                    // To save time, spawn a thread.
-                    if (newMol->isLipinskiCompliant())
-                    {
-                        // Robert, this is the exact call we need to place into a thread.
-                        //pool.push(newMol->obmol);
-                        //OBGen::obgen(newMol->obmol);
-                    }
                 }
             }
         }
@@ -380,6 +357,9 @@ Molecule* Molecule::ComposeToNewMolecule(const Molecule& that,
     //
     OpenBabel::OBMol* newOBMol = new OpenBabel::OBMol(*this->obmol);
 
+    //
+    // CTA: Potential threading issue?
+    //
     *newOBMol += *that.obmol;
 
     // Add the new Open Babel bond.
@@ -560,6 +540,7 @@ Bond Molecule::getBond(int xID, int yID) const
     return bonds[index];
 }
 
+
 // *****************************************************************************
 
 void Molecule::addAtom(const Atom& a)
@@ -567,6 +548,30 @@ void Molecule::addAtom(const Atom& a)
     this->atoms.push_back(a);
 
     // TODO: Add atom to this->obmol
+}
+
+// *****************************************************************************
+
+//
+// Fast implementation of a Tanimoto coefficient calculator.
+//
+double getTanimoto(std::bitset<1024> &tc_fpt1, std::bitset<1024> &tc_fpt2 )
+{
+    std::bitset<1024> xftp1 = tc_fpt1;
+    std::bitset<1024> xftp2 = tc_fpt2;
+ 
+    int v1 = (xftp1 ^= xftp2).count();
+    int v2 = (xftp1 &= xftp2).count();
+    int v3 = (xftp1 |= xftp2).count();
+
+    double tc_fast = 0.0;
+ 
+    if ( ( v1 - v2 + v3 ) > 0 )
+    {
+        tc_fast = ( ( (double) ( v3 - v2 ) ) / ( (double) ( v1 - v2 + v3 ) ) );
+    }
+
+    return tc_fast;
 }
 
 

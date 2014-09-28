@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <bitset>
 
 
 #include <openbabel/mol.h>
@@ -63,6 +64,8 @@ class Molecule
     OpenBabel::OBMol* getOpenBabelMol() const { return obmol; }
     void GetFingerprint(std::vector<unsigned int>& fp) const;
 
+    static double getTanimoto(std::bitset<1024> &tc_fpt1, std::bitset<1024> &tc_fpt2 );
+
 
     //
     // Set Functions
@@ -84,8 +87,9 @@ class Molecule
     const std::vector<Linker*>& getLinkers() const { return linkers; }
     std::string getName() const { return name; }
 
-    void predictLipinski();
+    void openBabelPredictLipinski();
     void estimateLipinski(const Molecule &mol1, const Molecule &mol2);
+
 
   private:
     void localizeOBMol();
@@ -114,6 +118,7 @@ class Molecule
     OpenBabel::OBMol* obmol;
     // Used for molecular comparison of this OBMol object.
     std::vector<unsigned int> fingerprint; 
+    // std::bitset<1024> fingerprint;
 
 
     std::vector<Atom> atoms;

@@ -103,6 +103,15 @@ bool Options::handleOption(int& index)
         else
             LOGP_UPPERBOUND = atof(&argv[index][3]);
     }
+    if (strncmp(argv[index], "-hl", 3) == 0)
+    {
+        if (strcmp(argv[index], "-hl") == 0)
+            HIERARCHICAL_LEVEL_BOUND = atoi(argv[++index]);
+        else
+            HIERARCHICAL_LEVEL_BOUND = atoi(&argv[index][3]);
+    }
+
+
 
     return true;
 }

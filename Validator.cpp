@@ -19,23 +19,27 @@ bool Validator::Validate(OpenBabel::OBMol& validationMol)
     std::vector<unsigned int> validationFP;
     bool returnval = false;
 
-if (g_debug_output) std::cerr << "Atoms: " << validationMol.NumAtoms() << std::endl;
-if (g_debug_output) std::cerr << "Bonds: " << validationMol.NumBonds() << std::endl;
+    if (g_debug_output) std::cerr << "Atoms: " << validationMol.NumAtoms() << std::endl;
+    if (g_debug_output) std::cerr << "Bonds: " << validationMol.NumBonds() << std::endl;
 
     // Create the fingerprint for the validation molecule
     OpenBabel::OBFingerprint* fpType = OpenBabel::OBFingerprint::FindFingerprint("");
 
-if (g_debug_output) std::cerr << "Using Fingerprint: " << fpType->Description() << std::endl;
+    if (g_debug_output) std::cerr << "Using Fingerprint: " << fpType->Description() << std::endl;
 
+    // Acquire the fingerprint of the validation molecule so we can use it for Tanimoto comparison.
     fpType->GetFingerprint(&validationMol, validationFP);
 
-if (g_debug_output) std::cerr << "Validation: " << std::endl;
-for (std::vector<unsigned int>::const_iterator it = validationFP.begin(); it != validationFP.end(); it++)
-{
-    if (g_debug_output) std::cerr << *it << "|";
-}
-if (g_debug_output) std::cerr << std::endl;
-
+    if (g_debug_output)
+    {
+        std::cerr << "Validation: " << std::endl;
+        for (std::vector<unsigned int>::const_iterator it = validationFP.begin();
+             it != validationFP.end(); it++)
+        {
+            std::cerr << *it << "|";
+        }
+        std::cerr << std::endl;
+    }
 
     //
     // Check this validation fingerprint against all of fingerprints in the hypergraph
@@ -46,17 +50,23 @@ if (g_debug_output) std::cerr << std::endl;
     int maxIndex = -1;
     for (int v = 0; v < graph.vertices.size(); v++)
     {
+        // Acquire the fingerprint of the hypergraph molecule.
         std::vector<unsigned int> hgFP;
         graph.vertices[v].data.GetFingerprint(hgFP);
 
-        if (g_debug_output) std::cerr << "Hypergraph: " << std::endl;
-        for (std::vector<unsigned int>::const_iterator it = hgFP.begin(); it != hgFP.end(); it++)
+        // Debug output of the fingerprint.
+        if (g_debug_output)
         {
-            if (g_debug_output) std::cerr << *it << "|";
+            std::cerr << "Hypergraph: " << std::endl;
+            for (std::vector<unsigned int>::const_iterator it = hgFP.begin(); it != hgFP.end(); it++)
+            {
+                std::cerr << *it << "|";
+            }
+            std::cerr << std::endl;
         }
-        if (g_debug_output) std::cerr << std::endl;
 
-
+        // Acquire the tanimoto coefficient for the validation molecule and
+        // the synthesized molecules in the hypergraph.
         double tanimoto = OpenBabel::OBFingerprint::Tanimoto(validationFP, hgFP);
 
         if (tanimoto > maxTanimoto)
@@ -67,15 +77,20 @@ if (g_debug_output) std::cerr << std::endl;
 
         if (g_debug_output) std::cerr << "Tanimoto: " << tanimoto << std::endl;
 
-        if (tanimoto > (double)Options::TANIMOTO) {returnval = true; break;}
+        if (tanimoto > (double)Options::TANIMOTO) 
+        {
+            returnval = true;
+            break;
+        }
     }
 
 
     std::ofstream logfile("Max_Tanimoto_logfile.txt", std::ofstream::out | std::ofstream::app); // append
-    logfile << "Molecule: " << graph.vertices[maxIndex].data.getName() << "\n";
+    logfile << "Validation Molecule: " << validationMol.GetTitle() << " with ";
+    logfile << "Synth Molecule: " << graph.vertices[maxIndex].data.getName() << "\n";
     logfile << maxIndex << ": maxTanimoto = " << maxTanimoto;
-    if (returnval) logfile << " - Validated\n";
-    else logfile << " - Failed to Validate\n";
+    // if (returnval) logfile << " - Validated\n";
+    // else logfile << " - Failed to Validate\n";
     logfile << std::endl;
     logfile.close();
 
@@ -84,7 +99,7 @@ if (g_debug_output) std::cerr << std::endl;
 
 
 //
-// Validate all of the molecules.
+// Validate a list of molecules.
 //
 void Validator::Validate(std::vector<OpenBabel::OBMol>& molecules)
 {
@@ -117,10 +132,10 @@ void Validator::Validate(const std::string& fileName)
     // The molecules to validate.
     std::vector<OpenBabel::OBMol> molecules;
    
-std::cerr << "Reading Validation file " << fileName << std::endl;
+    std::cerr << "Reading Validation file " << fileName << std::endl;
  
     //
-    // Read all of the OBMol objects using Open Babel
+    // Read all of the OBMol objects using Open Babel; using their sample code style for reading.
     //
     OpenBabel::OBMol* mol = new OpenBabel::OBMol();
     bool notAtEnd = obConversion.ReadFile(mol, fileName.c_str());
@@ -134,7 +149,9 @@ std::cerr << "Reading Validation file " << fileName << std::endl;
         if (notAtEnd) molecules.push_back(*mol);
     }
 
+    // Validate all molecules in the given file.
     Validate(molecules);
+
 /*
     // Destroy all the newly-created molecules we validated.
     for (std::vector<OpenBabel::OBMol>::iterator it = molecules.begin(); it != molecules.end(); it++)
