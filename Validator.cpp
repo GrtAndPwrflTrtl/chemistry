@@ -17,6 +17,7 @@
 bool Validator::Validate(OpenBabel::OBMol& validationMol)
 {
     std::vector<unsigned int> validationFP;
+    bool returnval = false;
 
 if (g_debug_output) std::cerr << "Atoms: " << validationMol.NumAtoms() << std::endl;
 if (g_debug_output) std::cerr << "Bonds: " << validationMol.NumBonds() << std::endl;
@@ -39,27 +40,46 @@ if (g_debug_output) std::cerr << std::endl;
     //
     // Check this validation fingerprint against all of fingerprints in the hypergraph
     // 
+    // Tracks the largest tanimoto coefficient of the synthesized molecule (and index?)
+    //
+    double maxTanimoto = -1;
+    int maxIndex = -1;
     for (int v = 0; v < graph.vertices.size(); v++)
     {
         std::vector<unsigned int> hgFP;
         graph.vertices[v].data.GetFingerprint(hgFP);
 
-if (g_debug_output) std::cerr << "Hypergraph: " << std::endl;
-for (std::vector<unsigned int>::const_iterator it = hgFP.begin(); it != hgFP.end(); it++)
-{
-    if (g_debug_output) std::cerr << *it << "|";
-}
-if (g_debug_output) std::cerr << std::endl;
+        if (g_debug_output) std::cerr << "Hypergraph: " << std::endl;
+        for (std::vector<unsigned int>::const_iterator it = hgFP.begin(); it != hgFP.end(); it++)
+        {
+            if (g_debug_output) std::cerr << *it << "|";
+        }
+        if (g_debug_output) std::cerr << std::endl;
 
 
         double tanimoto = OpenBabel::OBFingerprint::Tanimoto(validationFP, hgFP);
 
+        if (tanimoto > maxTanimoto)
+        {
+            maxTanimoto = tanimoto;
+            maxIndex = v;
+        }
+
         if (g_debug_output) std::cerr << "Tanimoto: " << tanimoto << std::endl;
 
-        if (tanimoto > (double)Options::TANIMOTO) return true;
+        if (tanimoto > (double)Options::TANIMOTO) {returnval = true; break;}
     }
 
-    return false;
+
+    std::ofstream logfile("Max_Tanimoto_logfile.txt", std::ofstream::out | std::ofstream::app); // append
+    logfile << "Molecule: " << graph.vertices[maxIndex].data.getName() << "\n";
+    logfile << maxIndex << ": maxTanimoto = " << maxTanimoto;
+    if (returnval) logfile << " - Validated\n";
+    else logfile << " - Failed to Validate\n";
+    logfile << std::endl;
+    logfile.close();
+
+    return returnval;
 }
 
 

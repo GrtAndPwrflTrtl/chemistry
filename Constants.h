@@ -20,4 +20,10 @@ const bool g_debug_output=true;
 //  the input fragments to "initial_fragments_logfile.txt" and exit
 const bool g_calculate_lipinski_descriptors_for_input_fragments_only=false;
 
+// upper bounds
+extern double MOLWT_UPPERBOUND;
+extern double HBD_UPPERBOUND;
+extern double HBA1_UPPERBOUND;
+extern double LOGP_UPPERBOUND;
+
 #endif

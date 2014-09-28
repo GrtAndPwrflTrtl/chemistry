@@ -28,6 +28,8 @@ OBWriter::OBWriter(const char* outFile) : mCounter(0)
 
 // ****************************************************************************
 
+// This function is no longer called.
+
 int OBWriter::CountComplexLipinski(std::vector<Molecule>& molecules)
 {
     int numComplex = 0;
@@ -35,7 +37,7 @@ int OBWriter::CountComplexLipinski(std::vector<Molecule>& molecules)
     for (std::vector<Molecule>::iterator it = molecules.begin(); it != molecules.end(); it++)
     {
         // The output molecules must be lipinski compliant (and non-linker, non-rigid).
-        if (it->IsComplex() && it->IsLipinski())
+        if (it->IsComplex() && it->isLipinskiCompliant())
         {
             numComplex++;
         }
@@ -66,7 +68,7 @@ void OBWriter::ScrubAndExportSMI(std::vector<Molecule>& molecules)
 
         for (std::vector<Molecule>::iterator it = molecules.begin(); it != molecules.end(); it++) // iterate through molecules
         {
-            if (it->IsComplex() && it->IsLipinski()) // otherwise we dont care about it anyway, so skip to save time/effort
+            if (it->IsComplex() && it->isLipinskiCompliant()) // otherwise we dont care about it anyway, so skip to save time/effort
             {
                 // Set up data struct and display basic information
                 if (g_debug_output) std::cout << "ScrubAndExportSMI: getOpenBabelMol..." << std::endl;
@@ -118,7 +120,7 @@ void OBWriter::CallsBeforeWriting(std::vector<Molecule>& molecules)
     for (std::vector<Molecule>::iterator it = molecules.begin(); it != molecules.end(); it++)
     {
         // The output molecules must be lipinski compliant (and non-linker, non-rigid).
-        if (it->IsComplex() && it->IsLipinski())
+        if (it->IsComplex() && it->isLipinskiCompliant())
         {
             OpenBabel::OBMol* obmol = it->getOpenBabelMol();
 
@@ -135,7 +137,14 @@ void OBWriter::CallsBeforeWriting(std::vector<Molecule>& molecules)
 
 void OBWriter::write(std::vector<Molecule> molecules)
 {
-    int numToProcess = CountComplexLipinski(molecules);
+    //
+    // Refine the list of molecules to those that are lipinski compliant.
+    for (std::vector<Molecule>::iterator it = molecules.begin(); it != molecules.end(); it++)
+        {
+            it->predictLipinski();
+        }
+
+    // int numToProcess = CountComplexLipinski(molecules);
 
     std::cout << "OBWriter::write: ScrubAndExportSMI(molecules)..." << std::endl;
     ScrubAndExportSMI(molecules);
@@ -163,7 +172,8 @@ void OBWriter::write(std::vector<Molecule> molecules)
     for (std::vector<Molecule>::iterator it = molecules.begin(); it != molecules.end(); it++)
     {
         // The output molecules must be lipinski compliant (and non-linker, non-rigid).
-        if (it->IsComplex() && it->IsLipinski())
+        // Change IsLipinski to some function call to recalculate the OPENBABEL lipinski comliance check
+        if (it->IsComplex() && it->isLipinskiCompliant())
         {
             //
             // Print the molecule number

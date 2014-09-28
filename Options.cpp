@@ -6,6 +6,7 @@
 
 
 #include "Options.h"
+#include "Constants.h"
 
 
 double Options::TANIMOTO;
@@ -72,6 +73,35 @@ bool Options::handleOption(int& index)
         {
             Options::TANIMOTO = atof(&argv[index][3]);
         }
+    }
+
+    if (strncmp(argv[index], "-mw", 3) == 0)
+    {
+        if (strcmp(argv[index], "-mw") == 0)
+            MOLWT_UPPERBOUND = atof(argv[++index]);
+        else
+            MOLWT_UPPERBOUND = atof(&argv[index][3]);
+    }
+    if (strncmp(argv[index], "-hd", 3) == 0)
+    {
+        if (strcmp(argv[index], "-hd") == 0)
+            HBD_UPPERBOUND = atof(argv[++index]);
+        else
+            HBD_UPPERBOUND = atof(&argv[index][3]);
+    }
+    if (strncmp(argv[index], "-ha", 3) == 0)
+    {
+        if (strcmp(argv[index], "-ha") == 0)
+            HBA1_UPPERBOUND = atof(argv[++index]);
+        else
+            HBA1_UPPERBOUND = atof(&argv[index][3]);
+    }
+    if (strncmp(argv[index], "-lp", 3) == 0)
+    {
+        if (strcmp(argv[index], "-lp") == 0)
+            LOGP_UPPERBOUND = atof(argv[++index]);
+        else
+            LOGP_UPPERBOUND = atof(&argv[index][3]);
     }
 
     return true;

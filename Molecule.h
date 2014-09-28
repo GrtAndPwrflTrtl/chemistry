@@ -41,14 +41,15 @@ class Molecule
     bool IsLinker() const { return type == LINKER; }
     bool IsComplex() const { return type == COMPLEX; }
     bool IsRigid() const { return type == RIGID; }
-    bool IsLipinski() const { return lipinski; }
     
     bool islipinskiPredicted() { return lipinskiPredicted; };
     bool islipinskiEstimated() { lipinskiEstimated; };
-    double getMolWt() { return MolWt;};
-    double getHBD() { return HBD;};
-    double getHBA1() { return HBA1;};
-    double getlogP() { return logP;};
+    bool isLipinskiCompliant();
+    bool isOpenbabelLipinskiCompliant();
+    double getMolWt() const { return MolWt;};
+    double getHBD() const { return HBD;};
+    double getHBA1() const { return HBA1;};
+    double getlogP() const { return logP;};
 
     int getNumberOfAtoms() const { return this->atoms.size(); }
     int getNumberOfBonds() const { return this->bonds.size(); }
@@ -84,14 +85,13 @@ class Molecule
     std::string getName() const { return name; }
 
     void predictLipinski();
-    void estimateLipinski();
+    void estimateLipinski(const Molecule &mol1, const Molecule &mol2);
 
   private:
     void localizeOBMol();
 
     static const unsigned int RIGID_UPPER_BOUND = 10;
     static const unsigned int LINKER_UPPER_BOUND = 6;
-    bool isLipinskiCompliant();
     bool exceedsMaxMolecularMass();
     bool ContainsLoops() const;
     bool satisfiesMoleculeSynthesisCriteria();
@@ -106,7 +106,6 @@ class Molecule
     unsigned int moleculeID;
     std::string name;
     MoleculeT type;
-    bool lipinski;
     
 
     IdFactory atomIdMaker;

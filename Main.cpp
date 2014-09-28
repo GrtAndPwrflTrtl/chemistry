@@ -190,7 +190,7 @@ void readMoleculeFile(const char* fileName)
         if (local->islipinskiPredicted())
         {
             std::ofstream logfile("initial_fragments_logfile.txt", std::ofstream::out | std::ofstream::app); // append
-            logfile << fileName << "\n*MolWt = " << local->getMolWt() << "\n";
+            logfile << fileName << "\nMolWt = " << local->getMolWt() << "\n";
             logfile << "HBD = " << local->getHBD() << "\n";
             logfile << "HBA1 = " << local->getHBA1() << "\n";
             logfile << "logP = " << local->getlogP() << "\n";
@@ -243,7 +243,7 @@ int main(int argc, char** argv)
     if (!options.parseCommandLine()) return 1;
 
     cerr << "Tanimoto Specified: " << Options::TANIMOTO << endl;
-    
+
     if (!readInputFiles(options)) return 1;
     
     if (g_calculate_lipinski_descriptors_for_input_fragments_only)

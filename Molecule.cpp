@@ -50,7 +50,6 @@ Molecule::~Molecule()
 
 Molecule::Molecule(OpenBabel::OBMol* mol, const std::string& n, MoleculeT t) : graphID(-1),
                                                                                moleculeID(-1),
-                                                                               lipinski(true),
                                                                                obmol(mol),
                                                                                name(n),
                                                                                type(t),
@@ -74,6 +73,11 @@ void Molecule::predictLipinski()
     OpenBabel::OBDescriptor* pDesc2 = OpenBabel::OBDescriptor::FindType("HBA1");
     OpenBabel::OBDescriptor* pDesc4 = OpenBabel::OBDescriptor::FindType("logP");
 
+    if (!pDesc1) cerr << "HBD not found" << endl;
+    if (!pDesc2) cerr << "HBA1 not found" << endl;
+    if (!pDesc4) cerr << "logP not found" << endl;
+    if (!pDesc1 || !pDesc2 || !pDesc4) return;
+
     MolWt = (this->obmol)->GetMolWt(); // the standard molar mass given by IUPAC atomic masses (amu)
     HBD = pDesc1->Predict(this->obmol);
     HBA1 = pDesc2->Predict(this->obmol);
@@ -84,29 +88,23 @@ void Molecule::predictLipinski()
 }
 
 
-void Molecule::estimateLipinski()
+void Molecule::estimateLipinski(const Molecule &mol1, const Molecule &mol2)
 {
-    // initialize sums to 0
-    double calc_MolWt = 0;
-    double calc_HBD = 0;
-    double calc_HBA1 = 0;
-    double calc_logP = 0;
-
-    for (int r = 0; r < this->rigids.size(); r++)
+    if (!mol1.lipinskiPredicted && !mol1.lipinskiEstimated)
     {
-        calc_MolWt += (this->rigids[r])->getMolWt();
-        calc_HBD += (this->rigids[r])->getHBD();
-        calc_HBA1 += (this->rigids[r])->getHBA1();
-        calc_logP += (this->rigids[r])->getlogP();
+        cerr << "estimateLipinski: mol1 has no lipinski coefficients available" << endl;
+        return;
+    }
+    if (!mol2.lipinskiPredicted && !mol2.lipinskiEstimated)
+    {
+        cerr << "estimateLipinski: mol2 has no lipinski coefficients available" << endl;
+        return;
     }
 
-    for (int ell = 0; ell < this->linkers.size(); ell++)
-    {
-        calc_MolWt += (this->linkers[ell])->getMolWt();
-        calc_HBD += (this->linkers[ell])->getHBD();
-        calc_HBA1 += (this->linkers[ell])->getHBA1();
-        calc_logP += (this->linkers[ell])->getlogP();
-    }
+    double calc_MolWt = mol1.getMolWt() + mol2.getMolWt();
+    double calc_HBD = mol1.getHBD() + mol2.getHBD();
+    double calc_HBA1 = mol1.getHBA1() + mol2.getHBA1();
+    double calc_logP = mol1.getlogP() + mol2.getlogP();
 
     MolWt = 6.6746 + 0.95965 * calc_MolWt; // the standard molar mass given by IUPAC atomic masses (amu)
     HBD = 0.41189 + 0.4898 * calc_HBD;
@@ -243,49 +241,41 @@ bool Molecule::operator==(const Molecule& that) const
 //
 bool Molecule::exceedsMaxMolecularMass()
 {
-    return this->obmol->GetMolWt() > MAX_DALTON_WEIGHT;
+    if (!lipinskiPredicted && !lipinskiEstimated)
+        this->predictLipinski();
+    if (!lipinskiPredicted && !lipinskiEstimated)
+    {
+        cerr << "didnt predict and failed to estimate lipinski coefficients" << endl;
+        return false;
+    }
+    return MolWt > MOLWT_UPPERBOUND;
+}
+
+bool Molecule::isOpenbabelLipinskiCompliant()
+{
+    if (!lipinskiPredicted)
+        this->predictLipinski();
+    return this->isLipinskiCompliant();
 }
 
 bool Molecule::isLipinskiCompliant()
 {
-    //
+    if (!lipinskiPredicted && !lipinskiEstimated)
+        this->predictLipinski();
+    if (!lipinskiPredicted && !lipinskiEstimated)
+    {
+        cerr << "didnt predict and failed to estimate lipinski coefficients" << endl;
+        return false;
+    }
+
     // (b) Hydrogen Bond donors
-    //
-    OpenBabel::OBDescriptor* pDescr = OpenBabel::OBDescriptor::FindType("HBD");
-    if(pDescr)
-    {
-        if(pDescr->Predict(this->obmol) > 5.0) return false; 
-    }
-    else
-    {
-        std::cerr << "HBD not found." << std::endl;
-    }
+    if (HBD > HBD_UPPERBOUND) return false;
 
-    //
     // (c) Hydrogen Bond Acceptors
-    //
-    pDescr = OpenBabel::OBDescriptor::FindType("HBA1");
-    if(pDescr)
-    {
-        if (pDescr->Predict(this->obmol) > 10.0) return false;
-    }
-    else
-    {
-        std::cerr << "HBA1 not found." << std::endl;
-    }
+    if (HBA1 > HBA1_UPPERBOUND) return false;
 
-    //
     // Octanol-water partition coefficient log P not greater than 5
-    //
-    pDescr = OpenBabel::OBDescriptor::FindType("logP");
-    if(pDescr)
-    {
-        if (pDescr->Predict(this->obmol) > 5.0) return false;
-    }
-    else
-    {
-        std::cerr << "logP not found." << std::endl;
-    }
+    if (logP > HBA1_UPPERBOUND) return false;
 
     return true;
 }
@@ -310,9 +300,6 @@ bool Molecule::satisfiesMoleculeSynthesisCriteria()
 
     // Do the linkers / rigids create a loop in the molecule?
     if (ContainsLoops()) return false;
-
-    // Check Lipinski compliance
-    lipinski = isLipinskiCompliant();
 
     return true;
 }
@@ -363,7 +350,7 @@ if (g_debug_output) std::cerr << "\t" << that.atoms[thatA].toString() << std::en
 
                     // Only if lipinski compliant do we run a molecule through obgen.
                     // To save time, spawn a thread.
-                    if (newMol->lipinski)
+                    if (newMol->isLipinskiCompliant())
                     {
                         // Robert, this is the exact call we need to place into a thread.
                         //pool.push(newMol->obmol);
@@ -452,7 +439,7 @@ Molecule* Molecule::ComposeToNewMolecule(const Molecule& that,
     newLocal->atoms[thisAtomIndex-1].addExternalConnection(thatAtomIndex-1);
     newLocal->atoms[thatAtomIndex-1].addExternalConnection(thisAtomIndex-1);
 
-    newLocal->estimateLipinski();
+    newLocal->estimateLipinski(*this, that);
 
     return newLocal;
 }
