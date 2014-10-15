@@ -12,24 +12,22 @@ class Linker : public Molecule
 {
   public:
     Linker(OpenBabel::OBMol*, const std::string& name);
-    Linker() {}
+    Linker() : uniqueFragmentID(-1) {}
+
     ~Linker() {}
 
     bool operator==(const Linker& that) const
     {
-        // Check type and then call base class equality.
-        if (that.type != LINKER) return false;
-
-        Molecule thisMol = *this;
-        Molecule thatMol = that;
-
-        return thisMol == thatMol;
+        return this->getUniqueIndexID() == that.getUniqueIndexID();
     }
+
+    unsigned int getFragmentId() const { return this->uniqueFragmentID; }
 
   protected:
     virtual void parseAppendix(std::string& suffix);
 
   private:
+    unsigned int uniqueFragmentID;
 };
 
 #endif

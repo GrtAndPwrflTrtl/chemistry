@@ -28,7 +28,12 @@ class HyperGraph
     // The main graph data structure
     std::vector<HyperNode<T, A> > vertices;
 
-    HyperGraph() { }
+    HyperGraph(unsigned int numBuckets)
+    {
+        // Initialize the database of nodes that have the same size;
+        // these are essentially buckets to speed searching
+        buckets = new std::vector<int>[numBuckets]; 
+    }
     ~HyperGraph() { }
     int size() { return vertices.size(); }
 
@@ -60,6 +65,10 @@ class HyperGraph
     bool HasLocalEdge(const std::vector<int>& antecedent, int consequent);
     // Convert information to local, integer-based representation
     std::pair<std::vector<int>, int> ConvertToLocal(const std::vector<T>& antecedent, const T& consequent);
+
+    // A 'database' of nodes based on the size; the class T must implement a method called size
+    // These are buckets to expedite searching for equivalent molecules.
+    std::vector<int>* buckets;
 };
 
 
@@ -104,12 +113,13 @@ PebblerHyperGraph<T, A> HyperGraph<T, A>::GetPebblerHyperGraph() const
 template<class T, class A>
 int HyperGraph<T, A>::ConvertToLocalIntegerIndex(const T& inputData)
 {
-    for (int i = 0; i < vertices.size(); i++)
+    int sz = inputData.size();
+
+    for (std::vector<int>::const_iterator it = buckets[sz].begin();
+         it != buckets[sz].end();
+         it++)
     {
-        if (vertices[i].data == inputData)
-        {
-            return i;
-        }
+        if (vertices[*it].data == inputData) return *it;
     }
 
     return -1;
@@ -144,9 +154,13 @@ T& HyperGraph<T, A>::GetNode(int id)
 template<class T, class A>
 bool HyperGraph<T, A>::HasNode(const T& inputData)
 {
-    for (int v = 0; v < vertices.size(); v++) 
+    // Only check the exact set of nodes that have the same 'size'.
+    // The particular bucket contains indices.
+    int sz = inputData.size();
+
+    for (std::vector<int>::const_iterator it = buckets[sz].begin(); it != buckets[sz].end(); it++)
     {
-        if (vertices[v].data == inputData) return true;
+        if (vertices[*it].data == inputData) return true;
     }
 
     return false;
@@ -158,9 +172,13 @@ bool HyperGraph<T, A>::HasNode(const T& inputData)
 template<class T, class A>
 T HyperGraph<T, A>::GetNode(const T& inputData)
 {
-    for (int v = 0; v < vertices.size(); v++) 
+    // Only check the exact set of nodes that have the same 'size'.
+    // The particular bucket contains indices.
+    int sz = inputData.size();
+
+    for (std::vector<int>::const_iterator it = buckets[sz].begin(); it != buckets[sz].end(); it++)
     {
-        if (vertices[v].data == inputData) return vertices[v].data;
+        if (vertices[*it].data == inputData) return vertices[*it].data;
     }
 
     throw null;
@@ -176,6 +194,9 @@ bool HyperGraph<T, A>::AddNode(const T& inputData)
 
                                       // <data,   id>
     vertices.push_back(HyperNode<T, A>(inputData, vertices.size()));
+
+    // Place the index of the newly added node in the proper bucket.
+    buckets[inputData.size()].push_back(vertices.size() - 1);
 
     return true;
 }
@@ -219,8 +240,12 @@ std::pair<std::vector<int>, int> HyperGraph<T, A>::ConvertToLocal(const std::vec
 
     for (int a = 0; a < antecedent.size(); a++)
     {
+        // This speeds things up since we don't have to look up each node
+        // (avoid isomorphism check).
+        int index = antecedent[a].getUniqueIndexID();
+/*
         int index = ConvertToLocalIntegerIndex(antecedent[a]);
-
+*/
         if (index == -1)
         {
             std::string err = MakeString("Source node not found as a hypergraph node: \n",

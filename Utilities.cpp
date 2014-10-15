@@ -3,6 +3,7 @@
 #include <cstring>
 #include <iostream>
 #include <cctype>
+#include <algorithm>
 
 
 #include "Utilities.h"
@@ -73,5 +74,18 @@ void eatWhiteToNewLineOrChar(std::istream& in)
     {
         in.get();
     }
+}
+
+void MakeBoolVector(vector<bool>& vec, int size)
+{
+    for (int i = 0; i < size; i++)
+    {
+        vec.push_back(false);
+    }
+}
+
+bool ContainsFalse(const vector<bool>& vec)
+{
+    return std::find(vec.begin(), vec.end(), false) != vec.end();
 }
 

@@ -4,25 +4,24 @@
 
 const unsigned int null = 0;
 
+
 // Debugging constants
 const bool DEBUG = true;
 const bool HYPERGRAPH_CONSTR_DEBUG = true;
+const bool g_debug_output = false;
 
-// Limiting factor on molecule generation.
-const double MAX_DALTON_WEIGHT = 500.0;
 
 const int THREAD_POOL_SIZE = 10;
 
-// print debugging output to command line?
-const bool g_debug_output=true;
 
 // skip the entire synthesis, just output lipinski descriptors for
 //  the input fragments to "initial_fragments_logfile.txt" and exit
-const bool g_calculate_lipinski_descriptors_for_input_fragments_only=false;
+const bool g_calculate_lipinski_descriptors_for_input_fragments_only = false;
 
-// upper bounds
-extern unsigned int HIERARCHICAL_LEVEL_BOUND; 
+// upper bound for level-based threading synthesis
+extern unsigned int HIERARCHICAL_LEVEL_BOUND;
 
+// Limiting factor on molecule generation.
 extern double MOLWT_UPPERBOUND;
 extern double HBD_UPPERBOUND;
 extern double HBA1_UPPERBOUND;

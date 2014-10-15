@@ -4,7 +4,7 @@ OB_LIB=openbabel
 
 IDIR =./
 CC=g++
-OPT= -g -pg #-O1
+OPT= -g -pg -O2
 CFLAGS= $(OPT) -I$(IDIR) -I$(OB_INC) -l$(OB_LIB) -lpthread
 #
 ODIR=./obj
@@ -32,7 +32,13 @@ DEPS = EdgeAggregator.h \
 	Validator.h \
 	obgen.h \
 	Constants.h \
-	Thread_Pool.h
+	Thread_Pool.h \
+	FragmentGraph.h \
+        FragmentGraphNode.h \
+	FragmentSubNode.h \
+	LinkerFragmentSubNode.h \
+	RigidFragmentSubNode.h
+        
 
 _OBJ = Atom.o \
 	Instantiator.o \
@@ -49,7 +55,12 @@ _OBJ = Atom.o \
 	Options.o \
 	Validator.o \
 	obgen.o \
-	Constants.o
+	Constants.o \
+        FragmentGraph.o \
+        FragmentGraphNode.o \
+        FragmentSubNode.o \
+        LinkerFragmentSubNode.o \
+        RigidFragmentSubNode.o
 
 OBJ = $(patsubst %,$(ODIR)/%,$(_OBJ))
 

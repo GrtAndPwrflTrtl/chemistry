@@ -1,6 +1,7 @@
 #include <cstring>
 #include <string>
 #include <vector>
+#include <map>
 #include <sstream>
 #include <cctype>
 
@@ -10,18 +11,18 @@
 #include "Utilities.h"
 
 
-Rigid::Rigid(OpenBabel::OBMol* obmol, const std::string& name) : Molecule(obmol, name, RIGID)
+Rigid::Rigid(OpenBabel::OBMol* obmol, const std::string& name) : uniqueFragmentID(-1),
+                                                                 Molecule(obmol, name, RIGID)
 {
     //
     // Acquire the comment data, make a copy, parse that comment.
     //
-    OpenBabel::OBCommentData* comment = static_cast<OpenBabel::OBCommentData*>(obmol->GetData("Comment"));
+    OpenBabel::OBCommentData* comment =
+                           static_cast<OpenBabel::OBCommentData*>(obmol->GetData("Comment"));
 
     std::string commentStr = comment->GetData();
 
     parseAppendix(commentStr);
-
-    this->rigids.push_back(this);
 }
 
 void Rigid::parseAppendix(std::string& suffix)
@@ -36,7 +37,6 @@ void Rigid::parseAppendix(std::string& suffix)
     while(line.find("> <") == std::string::npos)
     {
         getline(suffStream, line);
-        std::cout << "---------" << line << "**********" << std::endl;
     }
 
     //

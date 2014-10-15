@@ -54,11 +54,11 @@
 //
 std::vector<Linker*> linkers;
 std::vector<Rigid*> rigids;
-static IdFactory moleculeIdMaker;
 
 void Cleanup(std::vector<Linker*>& linkers, std::vector<Rigid*>& rigids);
 
-bool splitMolecule(std::ifstream& infile, std::string& name, std::string& prefix, std::string& suffix)
+bool splitMolecule(std::ifstream& infile, std::string& name,
+                   std::string& prefix, std::string& suffix)
 {
     prefix = "";
     suffix = "";
@@ -116,15 +116,11 @@ Molecule* createLocalMolecule(OpenBabel::OBMol* mol, MoleculeT mType,
     //
     if (mType == LINKER)
     {
-        Linker* linker = new Linker(mol, name);
-        linker->setMoleculeID(moleculeIdMaker.getNextId());
-        return linker;
+        return new Linker(mol, name);
     }
     else if (mType == RIGID)
     {
-        Rigid* rigid = new Rigid(mol, name);
-        rigid->setMoleculeID(moleculeIdMaker.getNextId());
-        return rigid;    
+        return new Rigid(mol, name);
     }
     
     return 0;
@@ -151,7 +147,8 @@ void readMoleculeFile(const char* fileName)
     obConversion.SetInFormat("SDF");
 
     //
-    // Open the file, split the current molecule into Molecule Data (prefix) and Our Data (Suffix)
+    // Open the file, split the current molecule into Molecule Data (prefix)
+    // and Our Data (Suffix)
     //
     std::ifstream infile;
     infile.open(fileName);
@@ -181,7 +178,8 @@ void readMoleculeFile(const char* fileName)
         bool notAtEnd = obConversion.ReadString(mol, prefix);
 
         // Assign all needed data to the molecule (comment data)
-        Molecule* local = createLocalMolecule(mol, fileName[0] == 'l' ? LINKER : RIGID, name, suffix);
+        Molecule* local = createLocalMolecule(mol, fileName[0] == 'l' ? LINKER : RIGID,
+                                              name, suffix);
 
         // calculate the molecular weight, H donors and acceptors and the plogp
         local->openBabelPredictLipinski();
@@ -189,7 +187,8 @@ void readMoleculeFile(const char* fileName)
         // add to logfile
         if (local->islipinskiPredicted())
         {
-            std::ofstream logfile("initial_fragments_logfile.txt", std::ofstream::out | std::ofstream::app); // append
+            std::ofstream logfile("synth_log_initial_fragments_logfile.txt",
+                                  std::ofstream::out | std::ofstream::app); // append
             logfile << fileName << "\nMolWt = " << local->getMolWt() << "\n";
             logfile << "HBD = " << local->getHBD() << "\n";
             logfile << "HBA1 = " << local->getHBA1() << "\n";
@@ -197,8 +196,7 @@ void readMoleculeFile(const char* fileName)
             logfile << std::endl;
             logfile.close();
         }
-        else
-            cerr << "Main: predictLipinski failed somehow!" << endl;
+        else std::cerr << "Main: predictLipinski failed somehow!" << endl;
 
         if (g_debug_output) std::cout << "Local: " << *local << "|" << std::endl;
     
@@ -232,20 +230,49 @@ bool readInputFiles(const Options& options)
 
 int main(int argc, char** argv)
 {
-    if (argc <= 2)
+    if (argc < 2)
     {
-        cerr << "Usage: <program> [SDF-file-list] -o <output-file> -v <validation-file>" << endl;
+        std::cerr << "Usage: <program> [SDF-file-list] -o <output-file> -v <validation-file>"
+                  << " -pool <#obgen-threads>" << std::endl;
         return 1;
     }
 
-    // Global options object.
-    Options options(argc, argv);
-    if (!options.parseCommandLine()) return 1;
+    //
+    // Remove log files from a previous run.
+    //
+    std::string rmString = "rm synth_log*";
+    system(rmString.c_str());
 
-    cerr << "Tanimoto Coefficient Threshold Specified: " << Options::TANIMOTO << endl;
+    //
+    // Global options object.
+    //
+    Options options(argc, argv);
+    if (!options.parseCommandLine())
+    {
+        std::cerr << "Command-line parsing failed; exiting." << std::endl;
+        return 1;
+    }
+
+    // 
+    // Output command-line option information
+    //
+    if (!Options::THREADED)
+    {
+        std::cout << "\'-threaded\' not specified, but will be used." << std::endl;
+    }
+
+    // Printing the specified Tanimoto value to the user.
+    std::cerr << "Tanimoto Coefficient Threshold Specified: "
+              << Options::TANIMOTO << std::endl;
+    std::cerr << "OBGEN output thread pool size: "
+              << Options::OBGEN_THREAD_POOL_SIZE << std::endl;
+
 
     if (!readInputFiles(options)) return 1;
-    
+
+    //
+    // Bypass synthesis for acquiring information about the input fragments.
+    //    
     if (g_calculate_lipinski_descriptors_for_input_fragments_only)
     {
         std::cout << "Calculated Lipinski Descriptors for input fragments, now exiting early."
@@ -253,46 +280,38 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    cerr << "1" << endl;
-    
-    Instantiator instantiator(cout);
-    
-    cerr << "2" << endl;
-    
-    HyperGraph<Molecule, EdgeAnnotationT> graph = instantiator.Instantiate(linkers, rigids);
+    // Output object for the nodes of the hypergraph.
+    OBWriter* writer = new OBWriter(Options::OBGEN_THREAD_POOL_SIZE);
+    writer->InitializeFile(options.outFile);
 
-    std::cerr << "Hypergraph contains (" << graph.size() << ") nodes" << std::endl;
+    // The main object that performs synthesis.
+    Instantiator instantiator(writer, cout);
 
-    // std::cerr << "Graph: " << std::endl << graph
-    //          << "------------------------------------------------------------" << std::endl;
+    // Instantiation build the hypergraph; this is the main data structure for the
+    // resultant molecules.
+    // Also creates the hypergraph using threaded or non-threaded techniques.
+    HyperGraph<Molecule, EdgeAnnotationT>* graph = instantiator.ThreadedInstantiate(linkers,
+                                                                                    rigids);
 
-    cerr << "3" << endl;
-
-    //
-    // Write the nodes of the hypergraph (no pebbling).
-    //
-    OBWriter writer(options.outFile.c_str());
-
-    writer.write(graph.CollectData());
+    std::cout << "Hypergraph contains (" << graph->size() << ") nodes" << std::endl;
+    std::cout << OBWriter::compliantMols.size()
+              << " are Lipinski compliant molecules" << std::endl;
 
     //
     // Validate the molecules specified in the validation file (command-line -v)
     //
-    Validator validator(graph);
+    Validator validator(OBWriter::compliantMols);
     validator.Validate(options.validationFile);
 
-    //    PebblerHyperGraph<Molecule, EdgeAnnotationT> pebblerGraph = graph.GetPebblerHyperGraph();
+    // Deleting the writer will kill the thread pool.
+    delete writer; 
 
-    cerr << "4" << endl;
-
-    //    if (DEBUG) cout << graph;
-
-    cerr << "5" << endl;
+    // For later: pebbling
+    //PebblerHyperGraph<Molecule, EdgeAnnotationT> pebblerGraph = graph->GetPebblerHyperGraph();
 
     Cleanup(linkers, rigids);
 
-    cerr << "6" << endl;
-
+std::cerr << "Exiting the main thread." << std::endl;
 
     return 0;
 }

@@ -20,13 +20,14 @@
 class Validator
 {
   public:
-    Validator(const HyperGraph<Molecule, EdgeAnnotationT>& g) : graph(g) {}
+    Validator(std::vector<OpenBabel::OBMol*>& mols) : molecules(mols) {}
     bool Validate(OpenBabel::OBMol&);
     void Validate(const std::string& fileName);
     void Validate(std::vector<OpenBabel::OBMol>&);
 
   private:
-    HyperGraph<Molecule, EdgeAnnotationT> graph; 
+
+    std::vector<OpenBabel::OBMol*>& molecules; 
 };
 
 #endif

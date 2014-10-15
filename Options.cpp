@@ -9,8 +9,9 @@
 #include "Constants.h"
 
 
-double Options::TANIMOTO;
-
+double Options::TANIMOTO = 0.95;
+bool Options::THREADED = false;
+unsigned int Options::OBGEN_THREAD_POOL_SIZE = 15;
 
 Options::Options(int argCount, char** vals) : argc(argCount), argv(vals)
 {
@@ -19,6 +20,7 @@ Options::Options(int argCount, char** vals) : argc(argCount), argv(vals)
     validationFile = "";
 
     Options::TANIMOTO = 0.95;
+    Options::THREADED = false;
 }
 
 bool Options::parseCommandLine()
@@ -43,23 +45,15 @@ bool Options::parseCommandLine()
 //
 bool Options::handleOption(int& index)
 {
-    //
-    // Check for an error: last command-line argument is an option (with no subsequent file)
-    //
-    if (index + 1 >= argc)
-    {
-        std::cerr << "Specified option " << argv[index]
-                  << " not followed by a file name." << std::endl;
-        return false;
-    }
-
     if (strcmp(argv[index], "-o") == 0)
     {
         outFile = argv[++index];
+        return true;
     }
     if (strcmp(argv[index], "-v") == 0)
     {
         validationFile = argv[++index];
+        return true;
     }
     if (strncmp(argv[index], "-tc", 3) == 0)
     {
@@ -73,6 +67,7 @@ bool Options::handleOption(int& index)
         {
             Options::TANIMOTO = atof(&argv[index][3]);
         }
+        return true;
     }
 
     if (strncmp(argv[index], "-mw", 3) == 0)
@@ -81,6 +76,7 @@ bool Options::handleOption(int& index)
             MOLWT_UPPERBOUND = atof(argv[++index]);
         else
             MOLWT_UPPERBOUND = atof(&argv[index][3]);
+        return true;
     }
     if (strncmp(argv[index], "-hd", 3) == 0)
     {
@@ -88,6 +84,7 @@ bool Options::handleOption(int& index)
             HBD_UPPERBOUND = atof(argv[++index]);
         else
             HBD_UPPERBOUND = atof(&argv[index][3]);
+        return true;
     }
     if (strncmp(argv[index], "-ha", 3) == 0)
     {
@@ -95,6 +92,7 @@ bool Options::handleOption(int& index)
             HBA1_UPPERBOUND = atof(argv[++index]);
         else
             HBA1_UPPERBOUND = atof(&argv[index][3]);
+        return true;
     }
     if (strncmp(argv[index], "-lp", 3) == 0)
     {
@@ -102,6 +100,7 @@ bool Options::handleOption(int& index)
             LOGP_UPPERBOUND = atof(argv[++index]);
         else
             LOGP_UPPERBOUND = atof(&argv[index][3]);
+        return true;
     }
     if (strncmp(argv[index], "-hl", 3) == 0)
     {
@@ -109,10 +108,35 @@ bool Options::handleOption(int& index)
             HIERARCHICAL_LEVEL_BOUND = atoi(argv[++index]);
         else
             HIERARCHICAL_LEVEL_BOUND = atoi(&argv[index][3]);
+        return true;
+    }
+    if (strncmp(argv[index], "-threaded", 9) == 0)
+    {
+        Options::THREADED = true;
+        return true;
+    }
+    if (strncmp(argv[index], "-pool", 5) == 0)
+    {
+        if (strcmp(argv[index], "-mw") == 0)
+            OBGEN_THREAD_POOL_SIZE = atoi(argv[++index]);
+        else
+            OBGEN_THREAD_POOL_SIZE = atoi(&argv[index][5]);
+        return true;
     }
 
+/*
 
+    //
+    // Check for an error: last command-line argument is an option (with no subsequent file)
+    //
+    if (index + 1 >= argc)
+    {
+        std::cerr << "Specified option " << argv[index]
+                  << " not followed by the option value." << std::endl;
+        return false;
+    }
+*/
 
-    return true;
+    return false;
 }
 

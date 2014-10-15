@@ -1,6 +1,7 @@
 #include <vector>
 #include <iostream>
 #include <string>
+#include <map>
 #include <sstream>
 
 
@@ -13,7 +14,8 @@
 #include "AtomT.h"
 
 
-Linker::Linker(OpenBabel::OBMol* obmol, const std::string& name) : Molecule(obmol, name, LINKER)
+Linker::Linker(OpenBabel::OBMol* obmol, const std::string& name) : uniqueFragmentID(-1),
+                                                                   Molecule(obmol, name, LINKER)
 {
     //
     // Acquire the comment data, make a copy, parse that comment.
@@ -23,8 +25,6 @@ Linker::Linker(OpenBabel::OBMol* obmol, const std::string& name) : Molecule(obmo
     std::string commentStr = comment->GetData();
 
     parseAppendix(commentStr);
-
-    this->linkers.push_back(this);
 }
 
 //
@@ -61,6 +61,7 @@ void Linker::parseAppendix(std::string& suffix)
         this->atoms[x].setCanConnectToAnyAtom();
         this->atoms[x].setMaxConnect(maxConnections);
         this->atoms[x].setAtomType(* new AtomT(atomType));
+        this->atoms[x].setOwnerMolecule(this);
         this->atoms[x].setOwnerMoleculeType(LINKER);
     }
 }

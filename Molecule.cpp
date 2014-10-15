@@ -1,6 +1,7 @@
 #include <cstring>
 #include <vector>
 #include <bitset>
+#include <utility>
 
 
 #include<openbabel/descriptor.h>
@@ -14,6 +15,7 @@
 #include "Thread_Pool.h"
 #include "Rigid.h"
 #include "Linker.h"
+#include <pthread.h>
 
 
 #include "EdgeAggregator.h"
@@ -22,15 +24,36 @@
 #include "Utilities.h"
 #include "Constants.h"
 #include "Options.h"
+#include "FragmentGraph.h"
 
 
 // Static allocation of the thread pool.
 //Thread_Pool<OpenBabel::OBMol*, bool> Molecule::pool(THREAD_POOL_SIZE, OBGen::obgen);
 
+// a static class member needs to be defined in some .cpp
+pthread_mutex_t Molecule::openbabel_lock;
+
+unsigned int Molecule::RIGID_INDEX_START = -1;
+unsigned int Molecule::RIGID_INDEX_END = -1;
+unsigned int Molecule::LINKER_INDEX_START = -1;
+unsigned int Molecule::LINKER_INDEX_END = -1;
+unsigned int Molecule::FRAGMENT_END_INDEX = -1;
+unsigned int Molecule::NUM_UNIQUE_FRAGMENTS = -1;
+
+std::vector<Molecule*> Molecule::baseMolecules;
+IdFactory Molecule::connectionIdMaker(100);
+static const unsigned int NO_CONNECTION = -1;
+
+
 
 Molecule::Molecule() : lipinskiPredicted(false),
                        lipinskiEstimated(false)
-{}
+{
+    init_openbabel_lock();
+
+    numLinkers = 0;
+    numRigids = 0;
+}
 
 Molecule::~Molecule()
 {
@@ -49,26 +72,151 @@ Molecule::~Molecule()
 */
 }
 
-Molecule::Molecule(OpenBabel::OBMol* mol, const std::string& n, MoleculeT t) : graphID(-1),
-                                                                               moleculeID(-1),
-                                                                               obmol(mol),
-                                                                               name(n),
-                                                                               type(t),
-                                                                               lipinskiPredicted(false),
-                                                                               lipinskiEstimated(false) 
+Molecule::Molecule(OpenBabel::OBMol* mol, const std::string& n, MoleculeT t) :
+    uniqueIndexID(-1),
+    numLinkers(-1),
+    numRigids(-1),
+    numUniqueLinkers(-1),
+    numUniqueRigids(-1),
+    obmol(mol),
+    name(n),
+    type(t),
+    fragmentCounter(0),
+    lipinskiPredicted(false),
+    lipinskiEstimated(false) 
 {
+
+    init_openbabel_lock();
+
+    // Locking open babel since it is not thread-safe (at all)
+    pthread_mutex_lock(&Molecule::openbabel_lock);
+
     // Create the initial atom / bond data based on obmol.
     localizeOBMol();
 
+    // Unlocking open babel
+    pthread_mutex_unlock(&openbabel_lock);
+}
+
+void Molecule::init_openbabel_lock()
+{
     //
-    // Acquire the fingerprint of the new molecule.
+    // initializing global openbabel lock (once)
     //
-    OpenBabel::OBFingerprint* fpType = OpenBabel::OBFingerprint::FindFingerprint("");
-    fpType->GetFingerprint(mol, this->fingerprint);
+    static bool openbabel_lock_init = false;
+    if (openbabel_lock_init)
+    {
+        pthread_mutex_init(&openbabel_lock, NULL);
+        openbabel_lock_init = true;
+    }
+}
+
+void Molecule::initFragmentDevices()
+{
+    initFragmentInfo();
+    calcFragmentInfo();
+
+
+    // Indicate we are using this fragment
+    fragmentCounter[uniqueIndexID] = 1;
+
+    //
+    // Create the connection identifiers for this linker / rigid
+    //
+    // Find the connections for this molecule and create ids for them.
+    // These ids are unique to the linker and rigid.
+    for (int a = 0; a < atoms.size(); a++)
+    {
+        unsigned int id = atoms[a].getMaxConnect() > 0 ? connectionIdMaker.getNextId() 
+                                                       : NO_CONNECTION;
+        connectionIDs.push_back(id);
+        atoms[a].setConnectionID(id);
+    }
+}
+
+//
+// Calculate the number of linkers / rigids (copies and unique)
+//
+void Molecule::initFragmentInfo()
+{
+    if (this->fragmentCounter == 0)
+    {
+        int sz = Molecule::NUM_UNIQUE_FRAGMENTS;
+
+        // Create the reference count array
+        fragmentCounter = new unsigned int[sz];
+
+        // init the counters to zero
+        memset(fragmentCounter, 0, sz * sizeof(unsigned int));
+    }
+}
+
+void Molecule::calcFragmentInfo()
+{
+    this->numLinkers = 0;
+    this->numUniqueLinkers = 0;
+    this->numRigids = 0;
+    this->numUniqueRigids = 0;
+
+    for (int r = Molecule::RIGID_INDEX_START; r <= Molecule::RIGID_INDEX_END; r++)
+    {
+        if (fragmentCounter[r] != 0)
+        {
+            this->numUniqueRigids++;
+            this->numRigids += fragmentCounter[r];
+            this->rigids.push_back(static_cast<Rigid*>(baseMolecules[r]));
+        }
+    }
+
+    for (int ell = Molecule::LINKER_INDEX_START; ell <= Molecule::LINKER_INDEX_END; ell++)
+    {
+        if (fragmentCounter[ell] != 0)
+        {
+            this->numUniqueLinkers++;
+            this->numLinkers += fragmentCounter[ell];
+            this->linkers.push_back(static_cast<Linker*>(baseMolecules[ell]));
+        }
+    }
+}
+
+
+void Molecule::initGraphRepresentation()
+{
+    // Create the graph (using the number of unique fragments)
+    fingerprint = new FragmentGraph();
+
+    // Add the new node (with sub-nodes) to the graph.
+    unsigned int nodeIndex = fingerprint->AddInitialNode(this);
+
+    // Add the node to all the connection points
+    for (int a = 0; a < atoms.size(); a++)
+    {
+        if (connectionIDs[a] != NO_CONNECTION)
+        {
+            atoms[a].setGraphNodeIndex(std::make_pair(this->uniqueIndexID, nodeIndex));
+        }
+        // else atoms[a].setGraphNodeIndex(std::make_pair(uniqueIndexID, -1));
+    }
+}
+
+void Molecule::SetBaseMoleculeInfo(const std::vector<Molecule*> baseMols,
+                                  unsigned int numRigids, unsigned int numLinkers)
+{
+    baseMolecules = baseMols;
+
+    // Set the base molecule indices.
+    Molecule::RIGID_INDEX_START = 0;
+    Molecule::RIGID_INDEX_END = numRigids - 1;
+    Molecule::LINKER_INDEX_START = numRigids;
+    Molecule::LINKER_INDEX_END = numRigids + numLinkers - 1;
+    Molecule::FRAGMENT_END_INDEX = Molecule::LINKER_INDEX_END;
+    Molecule::NUM_UNIQUE_FRAGMENTS = numRigids + numLinkers;
 }
 
 void Molecule::openBabelPredictLipinski()
 {
+    pthread_mutex_lock(&Molecule::openbabel_lock);
+
     // calculate the molecular weight, H donors and acceptors and the plogp
     OpenBabel::OBDescriptor* pDesc1 = OpenBabel::OBDescriptor::FindType("HBD");
     OpenBabel::OBDescriptor* pDesc2 = OpenBabel::OBDescriptor::FindType("HBA1");
@@ -84,10 +232,21 @@ void Molecule::openBabelPredictLipinski()
     HBA1 = pDesc2->Predict(this->obmol);
     logP = pDesc4->Predict(this->obmol);
 
+    pthread_mutex_unlock(&Molecule::openbabel_lock);
+
     lipinskiPredicted = true;
     lipinskiEstimated = false;
 }
 
+
+//
+// Near the end of the synthesis process, there is little benefit 
+// to composing molecules if the two molecules will exceed the additive molecular weight.  
+//
+bool Molecule::willExceedMolecularWeight(const Molecule &mol1, const Molecule &mol2)
+{
+    return 6.6746 + 0.95965 * (mol1.getMolWt() + mol2.getMolWt()) > MOLWT_UPPERBOUND;
+}
 
 void Molecule::estimateLipinski(const Molecule &mol1, const Molecule &mol2)
 {
@@ -107,7 +266,7 @@ void Molecule::estimateLipinski(const Molecule &mol1, const Molecule &mol2)
     double calc_HBA1 = mol1.getHBA1() + mol2.getHBA1();
     double calc_logP = mol1.getlogP() + mol2.getlogP();
 
-    MolWt = 6.6746 + 0.95965 * calc_MolWt; // the standard molar mass given by IUPAC atomic masses (amu)
+    MolWt = 6.6746 + 0.95965 * calc_MolWt; // the molar mass given by IUPAC atomic masses (amu)
     HBD = 0.41189 + 0.4898 * calc_HBD;
     HBA1 = 0.278 + 0.93778 * calc_HBA1;
     logP = 0.84121 + 0.59105 * calc_logP;
@@ -136,68 +295,44 @@ void Molecule::localizeOBMol()
     {
         OpenBabel::OBBond* oneObBond = this->obmol->GetBondById(x);
 
-        this->addBond((int)oneObBond->GetBeginAtom()->GetId(), (int)oneObBond->GetEndAtom()->GetId());
+        this->addBond((int)oneObBond->GetBeginAtom()->GetId(), 
+                      (int)oneObBond->GetEndAtom()->GetId());
     }
-
-    //std::cerr << *this << std::endl;
 }
 
+//
+// Molecular comparison is through the use of a local fingerprinting scheme.
+// We construct a fingerprint by noting the connection anchors for fragments
+// and constructing a graph based on those anchor points. A fingerprint equality
+// check performs graph isomorphism.
+//
 bool Molecule::operator==(const Molecule& that) const
 {
-    //
-    // The foremost comparitor is the Tanimoto value
-    //
-    std::vector<unsigned int> thisFP = fingerprint;
-    std::vector<unsigned int> thatFP;
-    that.GetFingerprint(thatFP);
-    double tanimoto = OpenBabel::OBFingerprint::Tanimoto(thisFP, thatFP);
-
-    if (g_debug_output) std::cerr << "Tanimoto: " << tanimoto << std::endl;
-
-    if (tanimoto > Options::TANIMOTO) return true;
-
+// std::cout << "Comparing: " << *this << " and " << that << std::endl;
 
     //
-    // Check type as well as sizes of atoms, bonds, linkers, and rigids.
+    // The fragment counter maintains the number of instances of each specific fragment;
+    // if any of those counts differ, we have non-isomorphism.
     //
-    if (this->type != that.type) return false;
-
-
-    if (this->atoms.size() != that.atoms.size()) return false;
-
-    if (this->bonds.size() != that.bonds.size()) return false;
-
-    if (this->rigids.size() != that.rigids.size()) return false;
-
-    if (this->linkers.size() != that.linkers.size()) return false;
-
-    //
-    // Check the contents of the atoms, bonds, rigids, and linkers
-    //
-    for (int a = 0; a < this->atoms.size(); a++)
+    for (int f = 0; f < Molecule::FRAGMENT_END_INDEX; f++)
     {
-        if (find(that.atoms.begin(), that.atoms.end(), this->atoms[a]) == that.atoms.end())
+        if (this->fragmentCounter[f] != that.fragmentCounter[f])
         {
             return false;
         }
     }
 
-    for (int b = 0; b < this->bonds.size(); b++)
-    {
-        if (find(that.bonds.begin(), that.bonds.end(), this->bonds[b]) == that.bonds.end()) return false;
-    }
-
-    for (int r = 0; r < this->rigids.size(); r++)
-    {
-        if (find(that.rigids.begin(), that.rigids.end(), this->rigids[r]) == that.rigids.end()) return false;
-    }
-
-    for (int ell = 0; ell < this->linkers.size(); ell++)
-    {
-        if (find(that.linkers.begin(), that.linkers.end(), this->linkers[ell]) == that.linkers.end()) return false;
-    }
-
-    return true;
+    //
+    // If we reach this point in the code, we can expect the two molecules to have the
+    // same number of (1) linkers, (2) rigids, (3) unique rigids, (4) unique linkers,
+    // (5) bonds, and (6) # atoms
+    //
+    //
+    // Fingerprint verification.
+    //
+    // Fingerprint checking is last since it is slow; check other characteristics first.
+    //
+    return this->fingerprint->IsIsomorphicTo(that.getFingerprint());
 }
 
 // *****************************************************************************
@@ -226,7 +361,7 @@ bool Molecule::operator==(const Molecule& that) const
 //
 // (a) Check if the molecular weight is too heavy.
 //
-bool Molecule::exceedsMaxMolecularMass()
+bool Molecule::exceedsMaxEstimatedThresholds()
 {
     if (!lipinskiPredicted && !lipinskiEstimated) this->openBabelPredictLipinski();
 
@@ -236,14 +371,73 @@ bool Molecule::exceedsMaxMolecularMass()
         return false;
     }
 
+    if (MolWt > MOLWT_UPPERBOUND)
+    {
+        std::cout << "# Fragments (" << this->size() << ")"
+                  << MolWt << " > " << MOLWT_UPPERBOUND << std::endl;
+    }
+
+    // (b) Hydrogen Bond donors
+    if (HBD > HBD_UPPERBOUND)
+    {
+        //std::cerr << "Failed To Add due to HBD" << std::endl;
+        return false;
+    }
+
+    // (c) Hydrogen Bond Acceptors
+    if (HBA1 > HBA1_UPPERBOUND)
+    {
+        //std::cerr << "Failed To Add due to HBA1" << std::endl;
+        return false;
+    }
+
     return MolWt > MOLWT_UPPERBOUND;
 }
 
-bool Molecule::isOpenbabelLipinskiCompliant()
+bool Molecule::isOpenBabelLipinskiCompliant()
 {
     if (!lipinskiPredicted) this->openBabelPredictLipinski();
 
     return this->isLipinskiCompliant();
+}
+
+//
+// Static function to check whether an OpenBabel Mol is Lipinski compliant.
+//
+// No need for locks since locks should go AROUND the function call.
+bool Molecule::isOpenBabelLipinskiCompliant(OpenBabel::OBMol& mol)
+{
+    // calculate the molecular weight, H donors and acceptors and the plogp
+    OpenBabel::OBDescriptor* pDesc1 = OpenBabel::OBDescriptor::FindType("HBD");
+    OpenBabel::OBDescriptor* pDesc2 = OpenBabel::OBDescriptor::FindType("HBA1");
+    OpenBabel::OBDescriptor* pDesc4 = OpenBabel::OBDescriptor::FindType("logP");
+
+    if (!pDesc1) throw "HBD not found";
+    if (!pDesc2) throw "HBA1 not found";
+    if (!pDesc4) throw "logP not found";
+
+    // (b) Hydrogen Bond donors
+    if (pDesc1->Predict(&mol) > HBD_UPPERBOUND)
+    {
+        // std::cerr << "Failed HBD" << std::endl;
+        return false;
+    }
+
+    // (c) Hydrogen Bond Acceptors
+    if (pDesc2->Predict(&mol) > HBA1_UPPERBOUND)
+    {
+        // std::cerr << "Failed HBA1" << std::endl;
+        return false;
+    }
+
+    // Octanol-water partition coefficient log P not greater than 5
+    if (pDesc4->Predict(&mol) > LOGP_UPPERBOUND)
+    {
+        // std::cerr << "Failed PLOGP" << std::endl;
+        return false;
+    }
+
+    return true;
 }
 
 bool Molecule::isLipinskiCompliant()
@@ -263,7 +457,7 @@ bool Molecule::isLipinskiCompliant()
     if (HBA1 > HBA1_UPPERBOUND) return false;
 
     // Octanol-water partition coefficient log P not greater than 5
-    if (logP > HBA1_UPPERBOUND) return false;
+    if (logP > LOGP_UPPERBOUND) return false;
 
     return true;
 }
@@ -284,7 +478,7 @@ bool Molecule::satisfiesMoleculeSynthesisCriteria()
     //
     // The only eliminating criteria is for molecule mass to be too large.
     //
-    if (exceedsMaxMolecularMass()) return false;
+    if (exceedsMaxEstimatedThresholds()) return false;
 
     // Do the linkers / rigids create a loop in the molecule?
     if (ContainsLoops()) return false;
@@ -295,6 +489,13 @@ bool Molecule::satisfiesMoleculeSynthesisCriteria()
 std::vector<EdgeAggregator*>* Molecule::Compose(const Molecule& that) const
 {
     std::vector<EdgeAggregator*>* newMolecules = new std::vector<EdgeAggregator*>();
+
+
+    //
+    // Pre-emptively check the molecular weight to see if there is a benefit
+    // to composing these molecules.
+    //
+    if (Molecule::willExceedMolecularWeight(*this, that)) return newMolecules;
 
     //
     // For each atom in this molecule, does it connect to an atom in that molecule?
@@ -319,7 +520,8 @@ std::vector<EdgeAggregator*>* Molecule::Compose(const Molecule& that) const
 
                 // Create a new molecule;
                 // The indices are the new indices when the atoms and bonds are combined together.
-                Molecule* newMol = ComposeToNewMolecule(that, thisA + 1, thatA + this->atoms.size() + 1);
+                Molecule* newMol = ComposeToNewMolecule(that, thisA + 1,
+                                                        thatA + this->atoms.size() + 1);
 
                 // Check if the new Molecule satisfies all criteria.
                 if (newMol->satisfiesMoleculeSynthesisCriteria())
@@ -352,14 +554,12 @@ Molecule* Molecule::ComposeToNewMolecule(const Molecule& that,
                                          int thisAtomIndex,
                                          int thatAtomIndex) const
 {
+    pthread_mutex_lock(&openbabel_lock);
     //
     // Combine the Open Babel representations.
     //
     OpenBabel::OBMol* newOBMol = new OpenBabel::OBMol(*this->obmol);
 
-    //
-    // CTA: Potential threading issue?
-    //
     *newOBMol += *that.obmol;
 
     // Add the new Open Babel bond.
@@ -368,6 +568,9 @@ Molecule* Molecule::ComposeToNewMolecule(const Molecule& that,
 
     // Remove the comment information as it is no longer relevant to this molecule.
     newOBMol->DeleteData("Comment");
+
+    // Unlocking open babel; the next constructor call performs a relock
+    pthread_mutex_unlock(&openbabel_lock);
 
     //
     //
@@ -386,40 +589,75 @@ Molecule* Molecule::ComposeToNewMolecule(const Molecule& that,
         newLocal->atoms[newAtomCount].SetBasedOn(this->atoms[a]);
     }
 
+    int firstThatIndex = newAtomCount;
     for (int a = 0; a < that.atoms.size(); a++, newAtomCount++)
     {
         newLocal->atoms[newAtomCount].SetBasedOn(that.atoms[a]);
     }
 
+    // Init the fragment counter container.
+    newLocal->initFragmentInfo();
+
+    // Combine all the linkers and rigids into this molecule.
+    for (int f = 0; f <= FRAGMENT_END_INDEX; f++)
+    {
+        newLocal->fragmentCounter[f] = this->fragmentCounter[f] + that.fragmentCounter[f];
+
+    }
+    // Calculate all the fragment values: summary data.
+    newLocal->calcFragmentInfo();
+
     //
-    // Combine all the linkers and rigids
-    //
-    for (int r = 0; r < this->rigids.size(); r++)
-    {
-        newLocal->rigids.push_back(this->rigids[r]);
-    }
-
-    for (int r = 0; r < that.rigids.size(); r++)
-    {
-        newLocal->rigids.push_back(that.rigids[r]);
-    }
-
-    for (int ell = 0; ell < this->linkers.size(); ell++)
-    {
-        newLocal->linkers.push_back(this->linkers[ell]);
-    }
-
-    for (int ell = 0; ell < that.linkers.size(); ell++)
-    {
-        newLocal->linkers.push_back(that.linkers[ell]);
-    }
-
     // Add local information to the new molecule.
     // Bonds in open babel start indexing at 1.
+    //
     newLocal->atoms[thisAtomIndex-1].addExternalConnection(thatAtomIndex-1);
     newLocal->atoms[thatAtomIndex-1].addExternalConnection(thisAtomIndex-1);
 
+//std::cout << "Adding to fingerprint" << *this << that << std::endl;
+
+    // Create the fingerprint graph for the new molecule by:
+    //   (1) copying this fignerprint graph
+    newLocal->fingerprint = this->fingerprint->copy();
+
+
+
+/*
+std::cerr << "Copy: ";
+
+std::cout << *this->fingerprint << std::endl << "+++++++++++" << std::endl;
+std::cout << *that.fingerprint << std::endl << "===========" << std::endl;
+std::cout << *newLocal->fingerprint << std::endl;
+
+std::cout << "Graph node index: ("
+          << newLocal->atoms[thisAtomIndex - 1].getGraphNodeIndex().first
+          << ", " << newLocal->atoms[thisAtomIndex - 1].getGraphNodeIndex().second
+          << ")" << std::endl;
+*/
+
+    // Add the new linker / rigid connection to the graph
+    std::pair<unsigned int, unsigned int> toIndex;
+    toIndex = newLocal->fingerprint->AddEdgeAndNode(
+                          newLocal->atoms[thisAtomIndex - 1].getConnectionID(),
+                          newLocal->atoms[thisAtomIndex - 1].getGraphNodeIndex(),
+                          newLocal->atoms[thatAtomIndex - 1],
+                          that);
+
+    // Update the atoms of the new 'to' node to reflect the proper indices in the graph.
+    for (int a = 0; a < that.atoms.size(); a++)
+    {
+        newLocal->atoms[firstThatIndex++].UpdateIndices(toIndex);
+    }
+
+/*
+std::cout << *this->fingerprint << std::endl << "+++++++++++" << std::endl;
+std::cout << *that.fingerprint << std::endl << "===========" << std::endl;
+std::cout << *newLocal->fingerprint << std::endl;
+*/
+    // Estimate the Lipinski parameters.
     newLocal->estimateLipinski(*this, that);
+
+// exit(0);
 
     return newLocal;
 }
@@ -429,14 +667,9 @@ Molecule* Molecule::ComposeToNewMolecule(const Molecule& that,
 //
 // On-Demand acquisition of the fingerprint one time.
 //
-void Molecule::GetFingerprint(std::vector<unsigned int>& returnFP) const
+FragmentGraph* Molecule::getFingerprint() const
 {
-    if (this->fingerprint.empty())
-    {
-        std::cerr << "Expected pre-computed fingerprint." << std::endl;
-    }
-
-    returnFP = this->fingerprint;
+    return this->fingerprint;
 }
 
 
@@ -475,8 +708,10 @@ bool Molecule::addBond(int xID, int yID) // , eTypeOfBondT bt, eStatusBitT s)
 
     if (xIndex == -1 || yIndex == -1) return false;
 
+/*
     atoms[xIndex].addConnection(yIndex);
     atoms[yIndex].addConnection(xIndex);
+*/
 
     this->bonds.push_back(Bond(this->bonds.size(), xID, yID));
 
@@ -546,34 +781,7 @@ Bond Molecule::getBond(int xID, int yID) const
 void Molecule::addAtom(const Atom& a)
 {
     this->atoms.push_back(a);
-
-    // TODO: Add atom to this->obmol
 }
-
-// *****************************************************************************
-
-//
-// Fast implementation of a Tanimoto coefficient calculator.
-//
-double getTanimoto(std::bitset<1024> &tc_fpt1, std::bitset<1024> &tc_fpt2 )
-{
-    std::bitset<1024> xftp1 = tc_fpt1;
-    std::bitset<1024> xftp2 = tc_fpt2;
- 
-    int v1 = (xftp1 ^= xftp2).count();
-    int v2 = (xftp1 &= xftp2).count();
-    int v3 = (xftp1 |= xftp2).count();
-
-    double tc_fast = 0.0;
- 
-    if ( ( v1 - v2 + v3 ) > 0 )
-    {
-        tc_fast = ( ( (double) ( v3 - v2 ) ) / ( (double) ( v1 - v2 + v3 ) ) );
-    }
-
-    return tc_fast;
-}
-
 
 // *****************************************************************************
 
@@ -581,15 +789,15 @@ std::string Molecule::toString() const
 {
     std::ostringstream oss;
 
-    oss << "Molecule: " << graphID << " ";
+    oss << "Molecule: " << uniqueIndexID << " ";
 
     if (IsLinker()) oss << " is a linker.";
     else if (IsRigid())  oss << " is a rigid.";
     else if (IsComplex())
     {
         oss << "There are ";
-        oss << getNumberOfRigids() << " rigids, and ";
-        oss << getNumberOfLinkers();
+        oss << NumRigids() << " rigids, and ";
+        oss << NumLinkers();
         oss << " linkers." << std::endl;
     }
 
@@ -625,7 +833,7 @@ std::string Molecule::toString() const
 
 // *****************************************************************************
 
-std::ostream& operator<< (std::ostream& os, Molecule& mol)
+std::ostream& operator<< (std::ostream& os, const Molecule& mol)
 {
     os << mol.toString() << std::endl;
 

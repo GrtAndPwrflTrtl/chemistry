@@ -18,6 +18,8 @@ class Options
     std::vector<std::string> inFiles;
 
     static double TANIMOTO;
+    static bool THREADED;
+    static unsigned int OBGEN_THREAD_POOL_SIZE;
 
   private:
     int argc;
